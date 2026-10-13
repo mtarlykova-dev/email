@@ -30,6 +30,7 @@
     }
   },
   "exclude_scenarios": [
+    "2",
     "4"
   ],
   "alerts": {
