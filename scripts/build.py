@@ -154,11 +154,13 @@ def main():
             payload = json.load(f)
     else:
         payload = {"generated_at": None, "source": None, "rows": []}
-    rows = payload["rows"]
+    excluded = set(map(str, cfg.get("exclude_scenarios", [])))
+    rows = [r for r in payload["rows"] if r["seq"] not in excluded]
 
     # Порядок: сначала сценарии из config.json в их порядке, затем найденные автоматически.
     configured = list(cfg.get("scenarios", {}))
-    discovered = sorted({r["seq"] for r in rows} - set(configured))
+    configured = [s for s in configured if s not in excluded]
+    discovered = sorted({r["seq"] for r in rows} - set(configured), key=int)
     meta = scenario_meta(cfg, configured + discovered)
     for r in rows:
         r["lang"] = row_lang(r, meta)

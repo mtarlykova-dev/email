@@ -30,6 +30,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      HAS_SENDSAY: ${{ secrets.SENDSAY_APIKEY != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -53,7 +55,7 @@ jobs:
           fi
 
       - name: Загрузка статистики из Sendsay
-        if: github.event_name != 'push'
+        if: env.HAS_SENDSAY == 'true'
         env:
           SENDSAY_LOGIN: ${{ secrets.SENDSAY_LOGIN }}
           SENDSAY_APIKEY: ${{ secrets.SENDSAY_APIKEY }}
@@ -67,7 +69,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/daily.json data/alerts.json imports 2>/dev/null || true
+          if [ -d data ]; then git add data; fi
+          if [ -d imports ]; then git add imports; fi
           if git diff --cached --quiet; then
             echo "Данные не изменились"
           else

@@ -29,7 +29,9 @@
       "lang": "auto"
     }
   },
-  "exclude_scenarios": [],
+  "exclude_scenarios": [
+    "4"
+  ],
   "alerts": {
     "silence_days": 3,
     "silence_min_prev_sends": 10,
