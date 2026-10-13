@@ -1,4 +1,4 @@
-{"generated_at":"2026-10-13T19:43:57+00:00","source":"sendsay-api","rows":[
+{"generated_at":"2026-10-13T19:54:33+00:00","source":"sendsay-api","rows":[
 {"d":"2026-04-30","seq":"1","name":"Регистрация аккаунта без верификации за 7 дней","subject":"💚 Остался один шаг до полного функционала вашего аккаунта Capitalist","sent":79,"delivered":75,"bounced":4,"opens":31,"u_opens":20,"clicks":0,"u_clicks":0,"unsubs":1},
 {"d":"2026-05-01","seq":"1","name":"Регистрация аккаунта без верификации за 7 дней","subject":"💚 Остался один шаг до полного функционала вашего аккаунта Capitalist","sent":88,"delivered":86,"bounced":2,"opens":37,"u_opens":18,"clicks":1,"u_clicks":1,"unsubs":1},
 {"d":"2026-05-02","seq":"1","name":"Регистрация аккаунта без верификации 7 дней (2)","subject":"Криптовалюта, кошельки и карты CardsPro — все внутри одного аккаунта 💳","sent":77,"delivered":74,"bounced":3,"opens":5,"u_opens":4,"clicks":0,"u_clicks":0,"unsubs":0},
