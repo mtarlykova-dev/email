@@ -148,6 +148,21 @@ def main():
         print(f"Сценарии без названия в config.json: {', '.join(unknown)}")
     print(f"Всего строк в data/daily.json: {len(payload['rows'])}")
 
+    # Сводка в GitHub Actions: какие ID сценариев пришли из API и какие письма в них.
+    # По ней удобно сверить ID с config.json.
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary:
+        lines = ["## Сценарии из Sendsay API", "", "| ID | В config.json | Писем отправлено | Примеры писем |", "|---|---|---|---|"]
+        for s in seqs:
+            rs = [r for r in new_rows if r["seq"] == s]
+            names = sorted({r["name"] or r["subject"] for r in rs})[:3]
+            lines.append(f"| {s} | {cfg['scenarios'][s]['name'] if s in known else '—'} | {sum(r['sent'] for r in rs)} | {'; '.join(names)} |")
+        missing = [s for s in known if s not in seqs]
+        if missing:
+            lines += ["", f"Нет данных по сценариям из config.json: {', '.join(missing)}"]
+        with open(summary, "a", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n\n")
+
 
 if __name__ == "__main__":
     try:

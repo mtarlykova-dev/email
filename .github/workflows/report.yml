@@ -40,11 +40,14 @@ jobs:
       - name: Импорт ручных выгрузок из imports/
         run: |
           shopt -s nullglob
-          files=(imports/*.zip imports/*.csv)
+          files=(imports/[0-9]*/*.zip imports/[0-9]*/*.csv)
           if [ ${#files[@]} -gt 0 ]; then
             python scripts/import_csv.py "${files[@]}"
-            mkdir -p imports/done
-            git mv "${files[@]}" imports/done/ 2>/dev/null || mv "${files[@]}" imports/done/
+            for f in "${files[@]}"; do
+              dest="imports/done/$(basename "$(dirname "$f")")"
+              mkdir -p "$dest"
+              git mv "$f" "$dest/" 2>/dev/null || mv "$f" "$dest/"
+            done
           else
             echo "Новых файлов нет"
           fi

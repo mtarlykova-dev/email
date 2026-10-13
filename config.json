@@ -1,17 +1,35 @@
 {
-  "_help": "Настройки отчёта. scenarios: ID сценария Sendsay -> название, продукт, язык (ru/en/auto). Сценарии, которых тут нет, всё равно попадут в отчёт под именем «Сценарий #ID», если auto_discover = true.",
-
+  "_help": "Настройки отчёта. scenarios: ID сценария Sendsay (номер из адреса app.sendsay.ru/automation/workflows/<ID>) -> название, продукт, язык (ru/en/auto). Сценарии, которых тут нет, всё равно попадут в отчёт под именем «Сценарий #ID», если auto_discover = true.",
   "start_date": "2026-04-01",
   "auto_discover": true,
-
   "scenarios": {
-    "41276": { "name": "Welcome Capitalist", "product": "Capitalist", "lang": "auto" },
-    "95958": { "name": "Welcome CardsPro",   "product": "CardsPro",   "lang": "auto" },
-    "72097": { "name": "Регистрация (вход + 7 дней простоя)", "product": "Capitalist", "lang": "auto" }
+    "1": {
+      "name": "Регистрация Capitalist (вход и 7 дней простоя)",
+      "product": "Capitalist",
+      "lang": "auto"
+    },
+    "5": {
+      "name": "Welcome Capitalist",
+      "product": "Capitalist",
+      "lang": "auto"
+    },
+    "6": {
+      "name": "After KYB Capitalist",
+      "product": "Capitalist",
+      "lang": "auto"
+    },
+    "3": {
+      "name": "Welcome CardsPro",
+      "product": "CardsPro",
+      "lang": "auto"
+    },
+    "8": {
+      "name": "Реактивация CardsPro",
+      "product": "CardsPro",
+      "lang": "auto"
+    }
   },
-
   "exclude_scenarios": [],
-
   "alerts": {
     "silence_days": 3,
     "silence_min_prev_sends": 10,

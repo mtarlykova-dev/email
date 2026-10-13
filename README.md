@@ -22,11 +22,13 @@
 
 ```json
 "scenarios": {
-  "41276": { "name": "Welcome Capitalist", "product": "Capitalist", "lang": "auto" }
+  "5": { "name": "Welcome Capitalist", "product": "Capitalist", "lang": "auto" }
 }
 ```
 
-- ключ — ID сценария в Sendsay (он же в конце имени выгрузки `stat_uni_…_41276.csv`);
+Сейчас в отчёте: Регистрация Capitalist (1), Welcome CardsPro (3), Welcome Capitalist (5), After KYB Capitalist (6), Реактивация CardsPro (8).
+
+- ключ — ID сценария в Sendsay, номер из адреса `app.sendsay.ru/automation/workflows/<ID>` (число в конце имени выгрузки `stat_uni_…_41276.csv` — это не ID сценария);
 - `product` — `Capitalist` или `CardsPro`, по нему работает фильтр и сравнение;
 - `lang` — `ru`, `en` или `auto` (язык определяется по теме письма: кириллица → ru).
 
@@ -44,7 +46,9 @@
 
 ## Загрузить данные вручную
 
-Если API недоступен или нужна история до `start_date`: выгрузите «Экспорт» из сценария в Sendsay и загрузите zip/csv в папку `imports/` через GitHub (Add file → Upload files). Workflow сам разберёт файл, добавит данные и переложит его в `imports/done/`.
+Если API недоступен или нужна история до `start_date`: выгрузите «Экспорт» из сценария в Sendsay и загрузите zip/csv через GitHub (Add file → Upload files) в папку с ID сценария, например `imports/5/` для Welcome Capitalist. Workflow сам разберёт файл, добавит данные и переложит его в `imports/done/5/`.
+
+После первого запуска в сводке workflow (Actions → запуск → Summary) есть таблица «Сценарии из Sendsay API»: какие ID пришли и какие письма в них. Если ID в API не совпали с номерами из адресов, поправьте ключи в `config.json` по этой таблице.
 
 ## Как устроено
 

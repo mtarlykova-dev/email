@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Импорт ручных выгрузок «Экспорт» из сценария Sendsay (stat_uni_*.zip / *.csv).
 
-ID сценария берётся из конца имени файла: stat_uni_20261001190115_41276.csv -> 41276.
+ID сценария берётся из имени папки: imports/5/stat_uni_….zip -> сценарий 5
+(номер из адреса app.sendsay.ru/automation/workflows/5). Число в конце имени файла
+выгрузки — это не ID сценария, его не используем.
 Строки этого сценария за даты из выгрузки заменяются, остальное не трогается.
 
-Запуск:  python scripts/import_csv.py imports/stat_uni_*.zip
+Запуск:  python scripts/import_csv.py imports/5/stat_uni_*.zip
 """
 import csv
 import datetime as dt
@@ -22,19 +24,24 @@ COLS = {
     "Открытия": "opens", "Уник. открытия": "u_opens", "Клики": "clicks",
     "Уник. клики": "u_clicks", "Отписки": "unsubs",
 }
-SEQ_RE = re.compile(r"_(\d+)\.csv$", re.I)
+
+
+def seq_from_path(p):
+    folder = os.path.basename(os.path.dirname(os.path.abspath(p)))
+    return folder if folder.isdigit() else None
 
 
 def iter_csv_files(paths):
     for p in paths:
+        seq = seq_from_path(p)
         if p.lower().endswith(".zip"):
             with zipfile.ZipFile(p) as z:
                 for n in z.namelist():
                     if n.lower().endswith(".csv"):
-                        yield os.path.basename(n), z.read(n)
+                        yield seq, os.path.basename(n), z.read(n)
         else:
             with open(p, "rb") as f:
-                yield os.path.basename(p), f.read()
+                yield seq, os.path.basename(p), f.read()
 
 
 def decode(raw):
@@ -46,12 +53,10 @@ def decode(raw):
     return raw.decode("utf-8", "replace")
 
 
-def parse(name, raw):
-    m = SEQ_RE.search(name)
-    if not m:
-        print(f"Пропуск {name}: не нашёл ID сценария в имени файла")
+def parse(seq, name, raw):
+    if not seq:
+        print(f"Пропуск {name}: положите файл в папку с ID сценария, например imports/5/")
         return None, []
-    seq = m.group(1)
     text = decode(raw)
     dialect = csv.Sniffer().sniff(text[:4000], delimiters=",;\t")
     rows = []
@@ -71,8 +76,8 @@ def main():
     if not paths:
         sys.exit(__doc__)
     existing = load_rows()
-    for name, raw in iter_csv_files(paths):
-        seq, rows = parse(name, raw)
+    for seq, name, raw in iter_csv_files(paths):
+        seq, rows = parse(seq, name, raw)
         if not rows:
             continue
         lo, hi = min(r["d"] for r in rows), max(r["d"] for r in rows)
