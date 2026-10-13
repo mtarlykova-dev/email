@@ -1,4 +1,4 @@
-{"generated_at":"2026-10-13T19:41:54+00:00","source":"sendsay-api","rows":[
+{"generated_at":"2026-10-13T19:43:57+00:00","source":"sendsay-api","rows":[
 {"d":"2026-04-30","seq":"1","name":"Регистрация аккаунта без верификации за 7 дней","subject":"💚 Остался один шаг до полного функционала вашего аккаунта Capitalist","sent":79,"delivered":75,"bounced":4,"opens":31,"u_opens":20,"clicks":0,"u_clicks":0,"unsubs":1},
 {"d":"2026-05-01","seq":"1","name":"Регистрация аккаунта без верификации за 7 дней","subject":"💚 Остался один шаг до полного функционала вашего аккаунта Capitalist","sent":88,"delivered":86,"bounced":2,"opens":37,"u_opens":18,"clicks":1,"u_clicks":1,"unsubs":1},
 {"d":"2026-05-02","seq":"1","name":"Регистрация аккаунта без верификации 7 дней (2)","subject":"Криптовалюта, кошельки и карты CardsPro — все внутри одного аккаунта 💳","sent":77,"delivered":74,"bounced":3,"opens":5,"u_opens":4,"clicks":0,"u_clicks":0,"unsubs":0},
@@ -33,7 +33,6 @@
 {"d":"2026-05-18","seq":"1","name":"(2) Регистрация аккаунта без верификации 7 дней","subject":"Криптовалюта, кошельки и карты CardsPro — все внутри одного аккаунта 💳","sent":68,"delivered":66,"bounced":2,"opens":19,"u_opens":9,"clicks":1,"u_clicks":1,"unsubs":2},
 {"d":"2026-05-18","seq":"1","name":"(3) Регистрация аккаунта 7 дней","subject":"Свой карт-сервис под брендом: проще, чем кажется 💳","sent":88,"delivered":81,"bounced":7,"opens":14,"u_opens":12,"clicks":1,"u_clicks":1,"unsubs":2},
 {"d":"2026-05-19","seq":"1","name":"(3) Регистрация аккаунта 7 дней","subject":"Свой карт-сервис под брендом: проще, чем кажется 💳","sent":79,"delivered":76,"bounced":3,"opens":22,"u_opens":17,"clicks":1,"u_clicks":1,"unsubs":1},
-{"d":"2026-05-19","seq":"2","name":"Добро пожаловать в CardsPro — ваш аккаунт готов","subject":"Добро пожаловать в CardsPro — ваш аккаунт готов","sent":5,"delivered":3,"bounced":2,"opens":1,"u_opens":1,"clicks":0,"u_clicks":0,"unsubs":0},
 {"d":"2026-05-20","seq":"1","name":"(1) Регистрация аккаунта без верификации за 7 дней","subject":"💚 Остался один шаг до полного функционала вашего аккаунта Capitalist","sent":75,"delivered":72,"bounced":3,"opens":35,"u_opens":19,"clicks":2,"u_clicks":1,"unsubs":0},
 {"d":"2026-05-20","seq":"1","name":"(3) Регистрация аккаунта 7 дней","subject":"Свой карт-сервис под брендом: проще, чем кажется 💳","sent":67,"delivered":65,"bounced":2,"opens":11,"u_opens":6,"clicks":0,"u_clicks":0,"unsubs":2},
 {"d":"2026-05-21","seq":"1","name":"(1) Регистрация аккаунта без верификации за 7 дней","subject":"💚 Остался один шаг до полного функционала вашего аккаунта Capitalist","sent":93,"delivered":92,"bounced":1,"opens":1,"u_opens":1,"clicks":0,"u_clicks":0,"unsubs":0},
