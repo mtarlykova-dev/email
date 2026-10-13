@@ -9,6 +9,7 @@
 import datetime as dt
 import json
 import os
+import re
 import shutil
 import sys
 from collections import defaultdict
@@ -37,6 +38,68 @@ def row_lang(row, meta):
     return lang if lang in ("ru", "en") else detect_lang(row["subject"], row["name"])
 
 
+NUM_PREFIX = re.compile(r"^\s*\(?(\d+)[.)]")
+
+
+def assign_letters(rows, cfg):
+    """Определяет номер письма в цепочке (step) для каждой строки.
+
+    1) Порядок из config.json: scenarios.<ID>.letters.<язык> — список фрагментов
+       темы или названия письма по порядку. Так одно письмо склеивается, даже если
+       его переименовали в Sendsay.
+    2) Номер в начале названия: «1. …», «(2) …».
+    3) Иначе — по дате первой отправки, после известных писем (step_guess = True).
+    """
+    groups = defaultdict(list)
+    for r in rows:
+        groups[(r["seq"], r["lang"])].append(r)
+    for (seq, lang), grs in groups.items():
+        spec = cfg.get("scenarios", {}).get(seq, {}).get("letters", {}).get(lang, [])
+        spec = [[m] if isinstance(m, str) else m for m in spec]
+        variants = {}
+        for r in grs:
+            k = (r["name"], r["subject"])
+            if k not in variants:
+                variants[k] = {"first": r["d"], "last": r["d"], "subject": r["subject"] or r["name"]}
+            v = variants[k]
+            if r["d"] < v["first"]:
+                v["first"] = r["d"]
+            if r["d"] >= v["last"]:
+                v["last"], v["subject"] = r["d"], r["subject"] or r["name"]
+        steps = {}
+        for (name, subj), v in variants.items():
+            hay = f"{name} {subj}".lower()
+            step = next((i + 1 for i, ms in enumerate(spec) if any(m.lower() in hay for m in ms)), None)
+            if step is None:
+                m = NUM_PREFIX.match(name or "")
+                step = int(m.group(1)) if m else None
+            steps[(name, subj)] = step
+        known = [st for st in steps.values() if st]
+        nxt = max(known or [0]) + 1
+        guessed = set()
+        for k, v in sorted(variants.items(), key=lambda kv: kv[1]["first"]):
+            if steps[k] is None:
+                steps[k] = nxt
+                guessed.add(k)
+                nxt += 1
+        for r in grs:
+            k = (r["name"], r["subject"])
+            r["step"] = steps[k]
+            r["step_guess"] = k in guessed
+            r["letter"] = f"{lang}:{steps[k]}"
+
+
+def letter_labels(rows):
+    """Подпись письма: «Письмо 2 (en) «последняя тема»»."""
+    last = {}
+    for r in rows:
+        key = (r["seq"], r["letter"])
+        if key not in last or r["d"] >= last[key]["d"]:
+            last[key] = r
+    return {k: f"Письмо {r['step']}{'?' if r['step_guess'] else ''} ({r['lang']}) «{r['subject'] or r['name']}»"
+            for k, r in last.items()}
+
+
 def window(rows, start, end):
     return [r for r in rows if start <= r["d"] <= end]
 
@@ -55,6 +118,7 @@ def pct(x):
 
 def compute_alerts(rows, meta, cfg, today):
     a = cfg["alerts"]
+    labels = letter_labels(rows)
     D = lambda n: (today - dt.timedelta(days=n)).isoformat()  # noqa: E731
     last_full = D(1)
     alerts = []
@@ -90,24 +154,30 @@ def compute_alerts(rows, meta, cfg, today):
 
         by_letter = defaultdict(list)
         for r in srows:
-            by_letter[r["name"] or r["subject"]].append(r)
+            by_letter[r["letter"]].append(r)
 
-        for letter, lrows in by_letter.items():
-            w = total(window(lrows, D(7), last_full))
-            # 3. Ошибки доставки
-            if w["sent"] >= a["bounce_min_sent"] and w["bounced"] / w["sent"] > a["bounce_rate_max"]:
+        for key, lrows in by_letter.items():
+            letter = labels[(seq, key)]
+            # 3–4. Ошибки доставки и отписки — одним алертом на письмо.
+            # Окно длиннее недели и минимум событий: на малых объёмах одна отписка даёт ложный процент.
+            nwin = a.get("rate_window_days", 14)
+            w = total(window(lrows, D(nwin), last_full))
+            min_cnt = a.get("min_events", 3)
+            issues, details = [], []
+            if (w["sent"] >= a["bounce_min_sent"] and w["bounced"] >= min_cnt
+                    and w["bounced"] / w["sent"] > a["bounce_rate_max"]):
+                issues.append(f"ошибки доставки {pct(w['bounced'] / w['sent'])}")
+                details.append(f"ошибки: {w['bounced']} из {w['sent']} отправленных (порог {pct(a['bounce_rate_max'])}; "
+                               f"проверьте исключение hard bounce и качество базы)")
+            if (w["delivered"] >= a["unsub_min_delivered"] and w["unsubs"] >= min_cnt
+                    and w["unsubs"] / w["delivered"] > a["unsub_rate_max"]):
+                issues.append(f"отписки {pct(w['unsubs'] / w['delivered'])}")
+                details.append(f"отписки: {w['unsubs']} из {w['delivered']} доставленных (порог {pct(a['unsub_rate_max'])})")
+            if issues:
                 alerts.append({
-                    "level": "medium", "seq": seq, "letter": letter, "kind": "bounce",
-                    "title": f"{name} · {letter}: ошибки доставки {pct(w['bounced'] / w['sent'])}",
-                    "detail": f"{w['bounced']} из {w['sent']} за 7 дней. Порог {pct(a['bounce_rate_max'])}. "
-                              f"Проверьте исключение hard bounce и качество базы.",
-                })
-            # 4. Отписки
-            if w["delivered"] >= a["unsub_min_delivered"] and w["unsubs"] / w["delivered"] > a["unsub_rate_max"]:
-                alerts.append({
-                    "level": "medium", "seq": seq, "letter": letter, "kind": "unsub",
-                    "title": f"{name} · {letter}: отписки {pct(w['unsubs'] / w['delivered'])}",
-                    "detail": f"{w['unsubs']} из {w['delivered']} доставленных за 7 дней. Порог {pct(a['unsub_rate_max'])}.",
+                    "level": "medium", "seq": seq, "letter": letter, "kind": "quality",
+                    "title": f"{name} · {letter}: {', '.join(issues)}",
+                    "detail": f"За {nwin} дней — " + "; ".join(details) + ".",
                 })
             # 5. Просадка открываемости: 14 дней (без последних 2, открытия ещё копятся) против 8 недель до этого.
             cur = total(window(lrows, D(16), D(3)))
@@ -164,6 +234,7 @@ def main():
     meta = scenario_meta(cfg, configured + discovered)
     for r in rows:
         r["lang"] = row_lang(r, meta)
+    assign_letters(rows, cfg)
 
     today = dt.datetime.now(MSK).date()
     alerts = compute_alerts(rows, meta, cfg, today) if rows else []
@@ -186,6 +257,7 @@ def main():
         "scenarios": meta,
         "alerts": alerts,
         "thresholds": {"unsub": cfg["alerts"]["unsub_rate_max"], "bounce": cfg["alerts"]["bounce_rate_max"]},
+        "benchmarks": cfg.get("benchmarks"),
         "rows": rows,
     }
     with open(site / "report.json", "w", encoding="utf-8") as f:

@@ -131,6 +131,10 @@ select { font: inherit; font-size: 13px; color: var(--ink); background: var(--su
 .stats dt { color: var(--ink-2); }
 .stats dd { margin: 0; text-align: right; font-weight: 500; }
 .stats dd.warn { color: var(--bad); }
+.bm { font-size: 10px; margin-right: 5px; vertical-align: 1px; }
+.bm.ok { color: var(--good); } .bm.low { color: var(--bad); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.bmline { margin-top: 8px; font-size: 12px; color: var(--ink-3); line-height: 1.4; }
 .empty { color: var(--ink-2); font-size: 14px; padding: 16px 0; }
 
 /* График */
@@ -156,6 +160,9 @@ td .cell { display: inline-flex; align-items: center; gap: 8px; justify-content:
 td .mini { width: 56px; height: 6px; background: var(--track); border-radius: 0 3px 3px 0; position: relative; display: inline-block; }
 td .mini b { position: absolute; left: 0; top: 0; bottom: 0; background: var(--s1); border-radius: 0 3px 3px 0; }
 tr.grp td { font-weight: 600; }
+tr.bmrow td { color: var(--ink-3); font-style: normal; }
+tr.bmrow:first-of-type td { border-top: 1px solid var(--ink-3); }
+a { color: var(--focus); }
 .foot { margin-top: 56px; color: var(--ink-3); font-size: 12px; max-width: 72ch; }
 .foot p { margin: 4px 0; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -180,7 +187,7 @@ tr.grp td { font-weight: 600; }
 
   <section>
     <h2>Цепочки по письмам</h2>
-    <p class="sub">Письма в порядке цепочки. Полосы показывают, какая доля отправленных писем доставлена, открыта и дала клик. Метрики считаются от доставленных, открытия и клики уникальные.</p>
+    <p class="sub">Письма в порядке цепочки. Полосы показывают, какая доля отправленных писем доставлена, открыта и дала клик. Метрики считаются от доставленных, открытия и клики уникальные. ▲ и ▼ — лучше или хуже ориентира: для первого письма цепочки это welcome-письма, для остальных — триггерные письма. OR не сравниваем: открытия завышены из-за Apple Mail Privacy Protection.</p>
     <div class="legend">
       <span><i style="background:var(--track)"></i>Отправлено</span>
       <span><i style="background:var(--f1)"></i>Доставлено</span>
@@ -348,7 +355,6 @@ tr.grp td { font-weight: 600; }
     const rows = R.rows.filter(r => baseFilter(r) && r.d >= s && r.d <= e);
     const box = document.getElementById("chains");
     if (!rows.length) { box.innerHTML = `<p class="empty">За выбранный период писем нет. Выберите период длиннее или другой фильтр.</p>`; return; }
-    const coll = new Intl.Collator("ru", { numeric: true });
     let html = "";
     for (const seq of scenarioOrder()) {
       const sr = rows.filter(r => r.seq === seq);
@@ -363,22 +369,30 @@ tr.grp td { font-weight: 600; }
         const lr = sr.filter(r => r.lang === lang);
         const byLetter = new Map();
         for (const r of lr) {
-          const k = r.name || r.subject;
-          if (!byLetter.has(k)) byLetter.set(k, []);
-          byLetter.get(k).push(r);
+          if (!byLetter.has(r.letter)) byLetter.set(r.letter, []);
+          byLetter.get(r.letter).push(r);
         }
-        const letters = [...byLetter.entries()].map(([k, rs]) => {
+        const letters = [...byLetter.values()].map(rs => {
           const last = rs.reduce((a, b) => (b.d > a.d ? b : a));
-          const first = rs.reduce((a, b) => (b.d < a.d ? b : a)).d;
-          return { k, subject: last.subject || k, first, t: sum(rs) };
-        }).sort((a, b) => coll.compare(a.k, b.k) || a.first.localeCompare(b.first));
+          return { step: rs[0].step, guess: rs[0].step_guess, subject: last.subject || last.name, name: last.name, t: sum(rs) };
+        }).sort((a, b) => a.step - b.step);
         const maxSent = Math.max(...letters.map(l => l.t.sent), 1);
         html += `<div class="branch"><div class="lang">${esc(lang)}</div><div class="chain">`;
-        letters.forEach((l, i) => {
+        letters.forEach(l => {
           const r = rates(l.t);
           const w = v => (v / maxSent * 100).toFixed(1) + "%";
-          html += `<div class="letter" title="${esc(l.k)}">
-            <div class="n">Письмо ${i + 1}</div>
+          const bm = R.benchmarks ? (l.step === 1 ? R.benchmarks.first : R.benchmarks.next) : null;
+          const cmp = (k, d, lowerIsBetter) => {
+            const v = r[k];
+            let mark = "";
+            if (bm && bm[k] != null && v != null) {
+              const better = lowerIsBetter ? v <= bm[k] : v >= bm[k];
+              mark = `<span class="bm ${better ? "ok" : "low"}" title="Ориентир (${esc(bm.label)}): ${fmtPct(bm[k], d)}">${better ? "▲" : "▼"}<span class="sr">${better ? "лучше ориентира" : "хуже ориентира"}</span></span>`;
+            }
+            return `${mark}${fmtPct(v, d)}`;
+          };
+          html += `<div class="letter" title="${esc(l.name)}">
+            <div class="n">Письмо ${l.step}${l.guess ? " · порядок не задан" : ""}</div>
             <div class="subj">${esc(l.subject)}</div>
             <div class="funnel" aria-hidden="true">
               <div class="bar" style="width:${w(l.t.sent)}"><b style="width:${l.t.sent ? (l.t.delivered / l.t.sent * 100) : 0}%;background:var(--f1)"></b></div>
@@ -388,11 +402,13 @@ tr.grp td { font-weight: 600; }
             <dl class="stats">
               <dt>Отправлено</dt><dd>${fmtInt(l.t.sent)}</dd>
               <dt>OR</dt><dd>${fmtPct(r.or)}</dd>
-              <dt>CTR</dt><dd>${fmtPct(r.ctr, 2)}</dd>
-              <dt>CTOR</dt><dd>${fmtPct(r.ctor)}</dd>
-              <dt>Отписки</dt><dd class="${r.unsub > R.thr.unsub ? "warn" : ""}">${fmtPct(r.unsub, 2)}</dd>
-              <dt>Ошибки</dt><dd class="${r.bounce > R.thr.bounce ? "warn" : ""}">${fmtPct(r.bounce)}</dd>
-            </dl></div>`;
+              <dt>CTR</dt><dd>${cmp("ctr", 2, false)}</dd>
+              <dt>CTOR</dt><dd>${cmp("ctor", 1, false)}</dd>
+              <dt>Отписки</dt><dd>${cmp("unsub", 2, true)}</dd>
+              <dt>Ошибки</dt><dd>${cmp("bounce", 1, true)}</dd>
+            </dl>
+            ${bm ? `<div class="bmline">Ориентир ${l.step === 1 ? "для 1-го письма" : "для следующих писем"}: CTR ${fmtPct(bm.ctr, 1)}, CTOR ${fmtPct(bm.ctor, 0)}, отписки ${fmtPct(bm.unsub, 2)}, ошибки ${fmtPct(bm.bounce, 1)}</div>` : ""}
+            </div>`;
         });
         html += `</div></div>`;
       }
@@ -516,10 +532,15 @@ tr.grp td { font-weight: 600; }
     if (!groups.length) { box.innerHTML = `<p class="empty">За выбранный период данных нет.</p>`; return; }
     const cols = [["or", "OR", 1], ["ctr", "CTR", 2], ["ctor", "CTOR", 1], ["unsub", "Отписки", 2], ["bounce", "Ошибки", 1]];
     const mx = Object.fromEntries(cols.map(([k]) => [k, Math.max(...groups.map(g => g.r[k] || 0), 1e-9)]));
+    const B = R.benchmarks;
+    const bmRows = B ? ["industry", "next", "first"].filter(k => B[k]).map(k =>
+      `<tr class="bmrow"><td>Ориентир: ${esc(B[k].label)}</td><td>—</td>` +
+      cols.map(([c, , d]) => `<td>${B[k][c] != null ? fmtPct(B[k][c], d) : "—"}</td>`).join("") + `</tr>`).join("") : "";
     box.innerHTML = `<table><thead><tr><th></th><th>Отправлено</th>${cols.map(c => `<th>${c[1]}</th>`).join("")}</tr></thead><tbody>` +
       groups.map(g => `<tr class="${g.grp ? "grp" : ""}"><td>${g.grp ? esc(g.label) : "&nbsp;&nbsp;&nbsp;" + esc(g.label)}</td><td>${fmtInt(g.r.sent)}</td>` +
         cols.map(([k, , d]) => `<td><span class="cell">${fmtPct(g.r[k], d)}<span class="mini"><b style="width:${((g.r[k] || 0) / mx[k] * 100).toFixed(1)}%"></b></span></span></td>`).join("") + `</tr>`).join("") +
-      `</tbody></table>`;
+      bmRows + `</tbody></table>` +
+      (B ? `<p class="sub" style="margin-top:8px">Ориентиры: <a href="${esc(B.source_url)}" target="_blank" rel="noopener">${esc(B.source)}</a>. Публичных бенчмарков именно для B2B-финтеха нет, это ближайшие срезы.</p>` : "");
   }
 
   function render() { renderAlerts(); renderKpis(); renderChains(); renderTrend(); renderMatrix(); }
