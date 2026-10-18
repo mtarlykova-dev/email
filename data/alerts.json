@@ -1,5 +1,5 @@
 {
- "date": "2026-10-17",
+ "date": "2026-10-18",
  "alerts": [
   {
    "level": "high",
@@ -14,48 +14,48 @@
    "seq": "5",
    "letter": "Письмо 1 (ru) «Добро пожаловать в Capitalist — всё для расчетов в 1 месте»",
    "kind": "quality",
-   "title": "Welcome Capitalist · Письмо 1 (ru) «Добро пожаловать в Capitalist — всё для расчетов в 1 месте»: ошибки доставки 4,3%",
-   "detail": "За 14 дней — ошибки: 5 из 116 отправленных (порог 3,0%; проверьте исключение hard bounce и качество базы)."
+   "title": "Welcome Capitalist · Письмо 1 (ru) «Добро пожаловать в Capitalist — всё для расчетов в 1 месте»: ошибки доставки 4,5%",
+   "detail": "За 14 дней — ошибки: 5 из 110 отправленных (порог 3,0%; проверьте исключение hard bounce и качество базы)."
   },
   {
    "level": "medium",
    "seq": "5",
    "letter": "Письмо 2 (ru) «Агентство, команда или фрилансер — у каждого свой Capitalist»",
    "kind": "quality",
-   "title": "Welcome Capitalist · Письмо 2 (ru) «Агентство, команда или фрилансер — у каждого свой Capitalist»: ошибки доставки 4,6%",
-   "detail": "За 14 дней — ошибки: 6 из 130 отправленных (порог 3,0%; проверьте исключение hard bounce и качество базы)."
+   "title": "Welcome Capitalist · Письмо 2 (ru) «Агентство, команда или фрилансер — у каждого свой Capitalist»: ошибки доставки 4,1%",
+   "detail": "За 14 дней — ошибки: 5 из 123 отправленных (порог 3,0%; проверьте исключение hard bounce и качество базы)."
   },
   {
    "level": "medium",
    "seq": "5",
    "letter": "Письмо 3 (en) «Fees without surprises and cards without queues»",
    "kind": "quality",
-   "title": "Welcome Capitalist · Письмо 3 (en) «Fees without surprises and cards without queues»: ошибки доставки 3,9%",
-   "detail": "За 14 дней — ошибки: 5 из 129 отправленных (порог 3,0%; проверьте исключение hard bounce и качество базы)."
+   "title": "Welcome Capitalist · Письмо 3 (en) «Fees without surprises and cards without queues»: ошибки доставки 4,3%",
+   "detail": "За 14 дней — ошибки: 6 из 141 отправленных (порог 3,0%; проверьте исключение hard bounce и качество базы)."
   },
   {
    "level": "medium",
    "seq": "3",
    "letter": "Письмо 1 (en) «Welcome to CardsPro — your account is ready»",
    "kind": "quality",
-   "title": "Welcome CardsPro · Письмо 1 (en) «Welcome to CardsPro — your account is ready»: ошибки доставки 8,0%, отписки 0,8%",
-   "detail": "За 14 дней — ошибки: 31 из 387 отправленных (порог 3,0%; проверьте исключение hard bounce и качество базы); отписки: 3 из 355 доставленных (порог 0,6%)."
+   "title": "Welcome CardsPro · Письмо 1 (en) «Welcome to CardsPro — your account is ready»: ошибки доставки 6,9%, отписки 0,9%",
+   "detail": "За 14 дней — ошибки: 25 из 363 отправленных (порог 3,0%; проверьте исключение hard bounce и качество базы); отписки: 3 из 337 доставленных (порог 0,6%)."
   },
   {
    "level": "medium",
    "seq": "3",
    "letter": "Письмо 2 (en) «Have you issued your first card yet?»",
    "kind": "quality",
-   "title": "Welcome CardsPro · Письмо 2 (en) «Have you issued your first card yet?»: ошибки доставки 7,1%",
-   "detail": "За 14 дней — ошибки: 29 из 406 отправленных (порог 3,0%; проверьте исключение hard bounce и качество базы)."
+   "title": "Welcome CardsPro · Письмо 2 (en) «Have you issued your first card yet?»: ошибки доставки 7,2%",
+   "detail": "За 14 дней — ошибки: 29 из 404 отправленных (порог 3,0%; проверьте исключение hard bounce и качество базы)."
   },
   {
    "level": "medium",
    "seq": "3",
    "letter": "Письмо 3 (en) «What if your customers could pay with your cards?»",
    "kind": "quality",
-   "title": "Welcome CardsPro · Письмо 3 (en) «What if your customers could pay with your cards?»: ошибки доставки 9,2%",
-   "detail": "За 14 дней — ошибки: 36 из 393 отправленных (порог 3,0%; проверьте исключение hard bounce и качество базы)."
+   "title": "Welcome CardsPro · Письмо 3 (en) «What if your customers could pay with your cards?»: ошибки доставки 8,3%",
+   "detail": "За 14 дней — ошибки: 33 из 396 отправленных (порог 3,0%; проверьте исключение hard bounce и качество базы)."
   },
   {
    "level": "medium",
@@ -63,39 +63,39 @@
    "letter": "Письмо 4 (en) «CardsPro for teams: one dashboard, full control»",
    "kind": "quality",
    "title": "Welcome CardsPro · Письмо 4 (en) «CardsPro for teams: one dashboard, full control»: ошибки доставки 8,4%",
-   "detail": "За 14 дней — ошибки: 32 из 383 отправленных (порог 3,0%; проверьте исключение hard bounce и качество базы)."
+   "detail": "За 14 дней — ошибки: 32 из 380 отправленных (порог 3,0%; проверьте исключение hard bounce и качество базы)."
   },
   {
    "level": "medium",
    "seq": "3",
    "letter": "Письмо 5 (en) «It is CardsPro — how’s it going?»",
    "kind": "quality",
-   "title": "Welcome CardsPro · Письмо 5 (en) «It is CardsPro — how’s it going?»: ошибки доставки 7,3%, отписки 0,9%",
-   "detail": "За 14 дней — ошибки: 26 из 355 отправленных (порог 3,0%; проверьте исключение hard bounce и качество базы); отписки: 3 из 327 доставленных (порог 0,6%)."
+   "title": "Welcome CardsPro · Письмо 5 (en) «It is CardsPro — how’s it going?»: ошибки доставки 8,2%, отписки 0,9%",
+   "detail": "За 14 дней — ошибки: 29 из 353 отправленных (порог 3,0%; проверьте исключение hard bounce и качество базы); отписки: 3 из 320 доставленных (порог 0,6%)."
   },
   {
    "level": "medium",
    "seq": "1",
    "letter": "Письмо 1 (ru) «💚 Остался один шаг до полного функционала вашего аккаунта Capitalist»",
    "kind": "quality",
-   "title": "Регистрация Capitalist (вход и 7 дней простоя) · Письмо 1 (ru) «💚 Остался один шаг до полного функционала вашего аккаунта Capitalist»: отписки 1,5%",
-   "detail": "За 14 дней — отписки: 19 из 1241 доставленных (порог 0,6%)."
+   "title": "Регистрация Capitalist (вход и 7 дней простоя) · Письмо 1 (ru) «💚 Остался один шаг до полного функционала вашего аккаунта Capitalist»: отписки 1,6%",
+   "detail": "За 14 дней — отписки: 19 из 1213 доставленных (порог 0,6%)."
   },
   {
    "level": "medium",
    "seq": "1",
    "letter": "Письмо 2 (ru) «Криптовалюта, кошельки и карты CardsPro — все внутри одного аккаунта 💳»",
    "kind": "quality",
-   "title": "Регистрация Capitalist (вход и 7 дней простоя) · Письмо 2 (ru) «Криптовалюта, кошельки и карты CardsPro — все внутри одного аккаунта 💳»: отписки 1,0%",
-   "detail": "За 14 дней — отписки: 14 из 1388 доставленных (порог 0,6%)."
+   "title": "Регистрация Capitalist (вход и 7 дней простоя) · Письмо 2 (ru) «Криптовалюта, кошельки и карты CardsPro — все внутри одного аккаунта 💳»: отписки 0,9%",
+   "detail": "За 14 дней — отписки: 13 из 1372 доставленных (порог 0,6%)."
   },
   {
    "level": "medium",
    "seq": "1",
    "letter": "Письмо 3 (ru) «Свой карт-сервис под брендом: проще, чем кажется 💳»",
    "kind": "quality",
-   "title": "Регистрация Capitalist (вход и 7 дней простоя) · Письмо 3 (ru) «Свой карт-сервис под брендом: проще, чем кажется 💳»: отписки 1,0%",
-   "detail": "За 14 дней — отписки: 15 из 1441 доставленных (порог 0,6%)."
+   "title": "Регистрация Capitalist (вход и 7 дней простоя) · Письмо 3 (ru) «Свой карт-сервис под брендом: проще, чем кажется 💳»: отписки 1,3%",
+   "detail": "За 14 дней — отписки: 18 из 1411 доставленных (порог 0,6%)."
   }
  ]
 }
