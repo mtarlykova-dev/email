@@ -112,6 +112,15 @@ def total(rows):
     return t
 
 
+def plural(n, one, few, many):
+    n = abs(int(n))
+    if n % 10 == 1 and n % 100 != 11:
+        return one
+    if 2 <= n % 10 <= 4 and not 12 <= n % 100 <= 14:
+        return few
+    return many
+
+
 def pct(x):
     return f"{x * 100:.1f}%".replace(".", ",")
 
@@ -129,18 +138,25 @@ def compute_alerts(rows, meta, cfg, today):
 
     for seq, srows in by_seq.items():
         name = meta[seq]["name"]
-        # 1. Триггер замолчал: за последние N дней 0 отправок, а раньше письма шли.
+        # 1. Триггер замолчал: последние N полных дней без отправок, а до этого письма шли.
+        # В заголовке — реальный срок тишины от последней отправки, а не порог.
         n = a["silence_days"]
-        recent = total(window(srows, D(n), last_full))["sent"]
-        before = total(window(srows, D(n + 28), D(n + 1)))["sent"]
-        if recent == 0 and before >= a["silence_min_prev_sends"]:
-            alerts.append({
-                "level": "high", "seq": seq, "letter": None, "kind": "silence",
-                "title": f"{name}: нет отправок {n} дн.",
-                "detail": f"За предыдущие 4 недели ушло {before} писем, за последние {n} дн. — ни одного. "
-                          f"Проверьте, что в сценарий приходит вход (событие/триггер).",
-            })
-            continue
+        sent_days = [r["d"] for r in srows if r["sent"] > 0 and r["d"] <= last_full]
+        if sent_days:
+            last_sent = dt.date.fromisoformat(max(sent_days))
+            quiet = (today - dt.timedelta(days=1) - last_sent).days  # полных дней без отправок
+            before = total(window(srows, (last_sent - dt.timedelta(days=27)).isoformat(), last_sent.isoformat()))["sent"]
+            if quiet >= n and before >= a["silence_min_prev_sends"]:
+                alerts.append({
+                    "level": "high", "seq": seq, "letter": None, "kind": "silence",
+                    "title": f"{name}: нет отправок {quiet} {plural(quiet, 'день', 'дня', 'дней')} "
+                             f"(последняя — {last_sent.strftime('%d.%m')})",
+                    "detail": f"За 4 недели до последней отправки ушло {before} {plural(before, 'письмо', 'письма', 'писем')}, "
+                              f"с {(last_sent + dt.timedelta(days=1)).strftime('%d.%m')} — ни одного. "
+                              f"Проверьте, что в сценарий приходит вход (событие/триггер).",
+                    "last_sent": last_sent.isoformat(), "quiet_days": quiet,
+                })
+                continue
 
         # 2. Резкое падение объёма: последняя неделя против средней за 4 недели до неё.
         week = total(window(srows, D(7), last_full))["sent"]
@@ -156,29 +172,45 @@ def compute_alerts(rows, meta, cfg, today):
         for r in srows:
             by_letter[r["letter"]].append(r)
 
-        for key, lrows in by_letter.items():
-            letter = labels[(seq, key)]
-            # 3–4. Ошибки доставки и отписки — одним алертом на письмо.
-            # Окно длиннее недели и минимум событий: на малых объёмах одна отписка даёт ложный процент.
-            nwin = a.get("rate_window_days", 14)
+        # 3–4. Ошибки доставки и отписки — один алерт на сценарий со списком писем,
+        # чтобы 10 одинаковых строк не заслоняли срочное.
+        # Окно длиннее недели и минимум событий: на малых объёмах одна отписка даёт ложный процент.
+        nwin = a.get("rate_window_days", 14)
+        min_cnt = a.get("min_events", 3)
+        bad_bounce, bad_unsub, active = [], [], 0
+        order_key = lambda kv: (kv[1][0]["lang"], kv[1][0]["step"])  # noqa: E731
+        for key, lrows in sorted(by_letter.items(), key=order_key):
+            short = f"письмо {lrows[0]['step']} ({lrows[0]['lang']})"
             w = total(window(lrows, D(nwin), last_full))
-            min_cnt = a.get("min_events", 3)
-            issues, details = [], []
+            if w["sent"]:
+                active += 1
             if (w["sent"] >= a["bounce_min_sent"] and w["bounced"] >= min_cnt
                     and w["bounced"] / w["sent"] > a["bounce_rate_max"]):
-                issues.append(f"ошибки доставки {pct(w['bounced'] / w['sent'])}")
-                details.append(f"ошибки: {w['bounced']} из {w['sent']} отправленных (порог {pct(a['bounce_rate_max'])}; "
-                               f"проверьте исключение hard bounce и качество базы)")
+                bad_bounce.append((short, w["bounced"], w["sent"]))
             if (w["delivered"] >= a["unsub_min_delivered"] and w["unsubs"] >= min_cnt
                     and w["unsubs"] / w["delivered"] > a["unsub_rate_max"]):
-                issues.append(f"отписки {pct(w['unsubs'] / w['delivered'])}")
-                details.append(f"отписки: {w['unsubs']} из {w['delivered']} доставленных (порог {pct(a['unsub_rate_max'])})")
-            if issues:
-                alerts.append({
-                    "level": "medium", "seq": seq, "letter": letter, "kind": "quality",
-                    "title": f"{name} · {letter}: {', '.join(issues)}",
-                    "detail": f"За {nwin} дней — " + "; ".join(details) + ".",
-                })
+                bad_unsub.append((short, w["unsubs"], w["delivered"]))
+        for kind, bad, word, base, thr, hint in [
+            ("bounce", bad_bounce, "ошибки доставки", "отправленных", a["bounce_rate_max"],
+             "Проверьте исключение hard bounce и качество базы."),
+            ("unsub", bad_unsub, "отписки", "доставленных", a["unsub_rate_max"],
+             "Проверьте частоту писем и соответствие темы содержанию."),
+        ]:
+            if not bad:
+                continue
+            many = f"во всех {len(bad)} письмах" if len(bad) == active and len(bad) > 1 else \
+                f"в {len(bad)} {plural(len(bad), 'письме', 'письмах', 'письмах')} из {active}"
+            worst = max(x[1] / x[2] for x in bad)
+            alerts.append({
+                "level": "medium", "seq": seq, "letter": None, "kind": kind,
+                "title": f"{name}: {word} выше {pct(thr)} {many} (до {pct(worst)})",
+                "detail": f"За {nwin} дней: " + "; ".join(f"{s} — {pct(c / b)} ({c} из {b} {base})" for s, c, b in bad)
+                          + f". {hint}",
+                "letters": [s for s, _, _ in bad],
+            })
+
+        for key, lrows in by_letter.items():
+            letter = labels[(seq, key)]
             # 5. Просадка открываемости: 14 дней (без последних 2, открытия ещё копятся) против 8 недель до этого.
             cur = total(window(lrows, D(16), D(3)))
             prev = total(window(lrows, D(72), D(17)))
@@ -227,9 +259,17 @@ def main():
     excluded = set(map(str, cfg.get("exclude_scenarios", [])))
     rows = [r for r in payload["rows"] if r["seq"] not in excluded]
 
+    # merge_into: письма старого сценария (например, EN-цепочки до объединения в ru+en)
+    # показываются в карточках нового. В data/daily.json строки остаются с исходным ID.
+    merges = {s: str(c["merge_into"]) for s, c in cfg.get("scenarios", {}).items() if c.get("merge_into")}
+    for r in rows:
+        if r["seq"] in merges:
+            r["src_seq"] = r["seq"]
+            r["seq"] = merges[r["seq"]]
+
     # Порядок: сначала сценарии из config.json в их порядке, затем найденные автоматически.
     configured = list(cfg.get("scenarios", {}))
-    configured = [s for s in configured if s not in excluded]
+    configured = [s for s in configured if s not in excluded and s not in merges]
     discovered = sorted({r["seq"] for r in rows} - set(configured), key=int)
     meta = scenario_meta(cfg, configured + discovered)
     for r in rows:
@@ -258,6 +298,8 @@ def main():
         "alerts": alerts,
         "thresholds": {"unsub": cfg["alerts"]["unsub_rate_max"], "bounce": cfg["alerts"]["bounce_rate_max"]},
         "benchmarks": cfg.get("benchmarks"),
+        "display": {"min_delivered": cfg.get("display", {}).get("min_delivered", 50),
+                    "rate_window_days": cfg["alerts"].get("rate_window_days", 14)},
         "rows": rows,
     }
     with open(site / "report.json", "w", encoding="utf-8") as f:

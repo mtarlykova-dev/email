@@ -120,19 +120,21 @@ select { font: inherit; font-size: 13px; color: var(--ink); background: var(--su
 .branch { display: grid; grid-template-columns: 34px 1fr; gap: 0 10px; margin-top: 14px; }
 .branch .lang { font-size: 12px; font-weight: 600; color: var(--ink-3); padding-top: 14px; text-transform: none; }
 .chain { display: flex; gap: 0; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
-.letter { flex: 1 0 210px; max-width: 280px; position: relative; padding: 12px 18px 12px 0; }
-.letter + .letter { padding-left: 18px; border-left: 1px dashed var(--line); }
+.letter { flex: 1 0 216px; max-width: 290px; position: relative; padding: 12px 14px 12px 0; min-width: 0; }
+.letter + .letter { padding-left: 14px; border-left: 1px dashed var(--line); }
 .letter .n { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .letter .subj { font-size: 14px; font-weight: 500; line-height: 1.3; margin: 2px 0 10px; min-height: 2.6em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .funnel { display: grid; gap: 3px; margin-bottom: 10px; }
 .funnel .bar { height: 8px; background: var(--track); border-radius: 0 4px 4px 0; position: relative; }
 .funnel .bar b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0 4px 4px 0; min-width: 2px; }
-.stats { display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.stats { display: grid; grid-template-columns: auto 1fr auto; gap: 1px 6px; font-size: 13px; font-variant-numeric: tabular-nums; }
 .stats dt { color: var(--ink-2); }
 .stats dd { margin: 0; text-align: right; font-weight: 500; }
 .stats dd.warn { color: var(--bad); }
-.bm { font-size: 10px; margin-right: 5px; vertical-align: 1px; }
-.bm.ok { color: var(--good); } .bm.low { color: var(--bad); }
+.stats dd.note { font-size: 11px; font-weight: 400; color: var(--ink-3); text-align: left; min-width: 0; align-self: center; white-space: nowrap; }
+.stats dd.note.up { color: var(--good); } .stats dd.note.down, .stats dd.note.over { color: var(--bad); }
+.letter.thin .stats dd:not(.note) { color: var(--ink-3); font-weight: 400; }
+.thinline { margin-top: 8px; font-size: 12px; color: var(--ink-2); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .bmline { margin-top: 8px; font-size: 12px; color: var(--ink-3); line-height: 1.4; }
 .empty { color: var(--ink-2); font-size: 14px; padding: 16px 0; }
@@ -187,7 +189,7 @@ a { color: var(--focus); }
 
   <section>
     <h2>Цепочки по письмам</h2>
-    <p class="sub">Письма в порядке цепочки. Полосы показывают, какая доля отправленных писем доставлена, открыта и дала клик. Метрики считаются от доставленных, открытия и клики уникальные. ▲ и ▼ — лучше или хуже ориентира: для первого письма цепочки это welcome-письма, для остальных — триггерные письма. OR не сравниваем: открытия завышены из-за Apple Mail Privacy Protection.</p>
+    <p class="sub">Письма в порядке цепочки. Полосы показывают, какая доля отправленных писем доставлена, открыта и дала клик. Метрики считаются от доставленных, открытия и клики уникальные. Справа от CTR и CTOR — изменение к прошлому периоду такой же длины (зелёный — лучше, красный — хуже). У отписок и ошибок — сравнение с порогом алертов: «выше порога» значит, что письмо стоит проверить; сами алерты считаются по последним <span id="rate-win">14</span> дням. Если доставлено мало писем, сравнения не показываются. OR не сравниваем: открытия завышены из-за Apple Mail Privacy Protection.</p>
     <div class="legend">
       <span><i style="background:var(--track)"></i>Отправлено</span>
       <span><i style="background:var(--f1)"></i>Доставлено</span>
@@ -234,7 +236,7 @@ a { color: var(--focus); }
     ctor: { label: "CTOR", fmt: v => fmtPct(v) },
     unsub:{ label: "Отписки", fmt: v => fmtPct(v, 2) },
   };
-  const state = { product: "all", lang: "all", period: "30", scenario: "all", metric: "or" };
+  const state = { product: "all", lang: "all", period: "30", scenario: "all", metric: "ctr" };
   let R = null, colorOf = {};
 
   const nf = new Intl.NumberFormat("ru-RU");
@@ -351,8 +353,17 @@ a { color: var(--focus); }
 
   // ---------- Цепочки ----------
   function renderChains() {
-    const [s, e] = periodBounds();
+    const [s, e, prev] = periodBounds();
     const rows = R.rows.filter(r => baseFilter(r) && r.d >= s && r.d <= e);
+    // Тот же фильтр за прошлый период такой же длины — для изменений в карточках.
+    const prevBy = new Map();
+    if (prev) for (const r of R.rows) {
+      if (!baseFilter(r) || r.d < prev[0] || r.d > prev[1]) continue;
+      const k = r.seq + "|" + r.letter;
+      if (!prevBy.has(k)) prevBy.set(k, []);
+      prevBy.get(k).push(r);
+    }
+    const MIN = (R.display && R.display.min_delivered) || 50;
     const box = document.getElementById("chains");
     if (!rows.length) { box.innerHTML = `<p class="empty">За выбранный период писем нет. Выберите период длиннее или другой фильтр.</p>`; return; }
     let html = "";
@@ -374,7 +385,9 @@ a { color: var(--focus); }
         }
         const letters = [...byLetter.values()].map(rs => {
           const last = rs.reduce((a, b) => (b.d > a.d ? b : a));
-          return { step: rs[0].step, guess: rs[0].step_guess, subject: last.subject || last.name, name: last.name, t: sum(rs) };
+          const p = prevBy.get(seq + "|" + rs[0].letter);
+          return { step: rs[0].step, guess: rs[0].step_guess, subject: last.subject || last.name, name: last.name,
+                   t: sum(rs), p: p ? sum(p) : null };
         }).sort((a, b) => a.step - b.step);
         const maxSent = Math.max(...letters.map(l => l.t.sent), 1);
         html += `<div class="branch"><div class="lang">${esc(lang)}</div><div class="chain">`;
@@ -382,32 +395,43 @@ a { color: var(--focus); }
           const r = rates(l.t);
           const w = v => (v / maxSent * 100).toFixed(1) + "%";
           const bm = R.benchmarks ? (l.step === 1 ? R.benchmarks.first : R.benchmarks.next) : null;
-          const cmp = (k, d, lowerIsBetter) => {
-            const v = r[k];
-            let mark = "";
-            if (bm && bm[k] != null && v != null) {
-              const better = lowerIsBetter ? v <= bm[k] : v >= bm[k];
-              mark = `<span class="bm ${better ? "ok" : "low"}" title="Ориентир (${esc(bm.label)}): ${fmtPct(bm[k], d)}">${better ? "▲" : "▼"}<span class="sr">${better ? "лучше ориентира" : "хуже ориентира"}</span></span>`;
-            }
-            return `${mark}${fmtPct(v, d)}`;
+          const thin = l.t.delivered < MIN;
+          const pr = l.p ? rates(l.p) : null;
+          // CTR и CTOR: изменение к прошлому периоду, только если в обоих периодах хватает объёма.
+          const delta = (k, d) => {
+            if (thin || !pr || l.p.delivered < MIN || r[k] == null || pr[k] == null) return `<dd class="note"></dd>`;
+            if (k === "ctor" && (l.t.u_opens < 10 || l.p.u_opens < 10)) return `<dd class="note"></dd>`;
+            const diff = r[k] - pr[k];
+            const txt = (Math.abs(diff) < 5e-5 ? "±" : diff > 0 ? "+" : "−") + Math.abs(diff * 100).toFixed(d).replace(".", ",") + " п.п.";
+            const cls = Math.abs(diff) < 5e-5 ? "" : diff > 0 ? "up" : "down";
+            return `<dd class="note ${cls}" title="Прошлый период: ${fmtPct(pr[k], d)}">${txt}</dd>`;
           };
-          html += `<div class="letter" title="${esc(l.name)}">
+          // Отписки и ошибки: тот же порог, что у алертов.
+          const limit = (k, d) => {
+            const thr = R.thr[k];
+            if (thin || r[k] == null || thr == null) return `<dd class="note"></dd>`;
+            const over = r[k] > thr;
+            return `<dd class="note ${over ? "over" : ""}" title="Порог алертов: ${fmtPct(thr, d)}">${over ? "выше порога" : "в норме"}</dd>`;
+          };
+          const fullTitle = l.subject + (l.name && l.name !== l.subject ? `\nВыпуск в Sendsay: ${l.name}` : "");
+          html += `<div class="letter${thin ? " thin" : ""}">
             <div class="n">Письмо ${l.step}${l.guess ? " · порядок не задан" : ""}</div>
-            <div class="subj">${esc(l.subject)}</div>
+            <div class="subj" title="${esc(fullTitle)}">${esc(l.subject)}</div>
             <div class="funnel" aria-hidden="true">
               <div class="bar" style="width:${w(l.t.sent)}"><b style="width:${l.t.sent ? (l.t.delivered / l.t.sent * 100) : 0}%;background:var(--f1)"></b></div>
               <div class="bar" style="width:${w(l.t.sent)}"><b style="width:${l.t.sent ? (l.t.u_opens / l.t.sent * 100) : 0}%;background:var(--f2)"></b></div>
               <div class="bar" style="width:${w(l.t.sent)}"><b style="width:${l.t.sent ? (l.t.u_clicks / l.t.sent * 100) : 0}%;background:var(--f3)"></b></div>
             </div>
             <dl class="stats">
-              <dt>Отправлено</dt><dd>${fmtInt(l.t.sent)}</dd>
-              <dt>OR</dt><dd>${fmtPct(r.or)}</dd>
-              <dt>CTR</dt><dd>${cmp("ctr", 2, false)}</dd>
-              <dt>CTOR</dt><dd>${cmp("ctor", 1, false)}</dd>
-              <dt>Отписки</dt><dd>${cmp("unsub", 2, true)}</dd>
-              <dt>Ошибки</dt><dd>${cmp("bounce", 1, true)}</dd>
+              <dt>Отправлено</dt><dd>${fmtInt(l.t.sent)}</dd><dd class="note"></dd>
+              <dt>OR</dt><dd>${fmtPct(r.or)}</dd><dd class="note"></dd>
+              <dt>CTR</dt><dd>${fmtPct(r.ctr, 2)}</dd>${delta("ctr", 2)}
+              <dt>CTOR</dt><dd>${fmtPct(r.ctor)}</dd>${delta("ctor", 1)}
+              <dt>Отписки</dt><dd>${fmtPct(r.unsub, 2)}</dd>${limit("unsub", 2)}
+              <dt>Ошибки</dt><dd>${fmtPct(r.bounce)}</dd>${limit("bounce", 1)}
             </dl>
-            ${bm ? `<div class="bmline">Ориентир ${l.step === 1 ? "для 1-го письма" : "для следующих писем"}: CTR ${fmtPct(bm.ctr, 1)}, CTOR ${fmtPct(bm.ctor, 0)}, отписки ${fmtPct(bm.unsub, 2)}, ошибки ${fmtPct(bm.bounce, 1)}</div>` : ""}
+            ${thin ? `<div class="thinline">Мало данных: доставлено ${fmtInt(l.t.delivered)} — сравнения не показываем.</div>` : ""}
+            ${bm ? `<div class="bmline">Внешний ориентир ${l.step === 1 ? "для 1-го письма" : "для следующих писем"}: CTR ${fmtPct(bm.ctr, 1)}, CTOR ${fmtPct(bm.ctor, 0)}</div>` : ""}
             </div>`;
         });
         html += `</div></div>`;
@@ -447,7 +471,7 @@ a { color: var(--focus); }
     document.getElementById("trend-legend").innerHTML = series.length > 1
       ? series.map(s => `<span><i style="background:${s.color};height:3px"></i>${esc(s.name)}</span>`).join("") : "";
     document.getElementById("trend-sub").textContent =
-      `${METRICS[m].label} по сценариям за последние 26 недель, неделя с понедельника.` + (partial ? " Последняя неделя ещё не закончилась." : "");
+      `${METRICS[m].label} по сценариям за последние 26 недель, неделя с понедельника.` + (partial ? " Пунктир — неделя ещё не закончилась, цифры по ней занижены." : "");
 
     const box = document.getElementById("trend");
     const tip = document.getElementById("tip");
@@ -467,16 +491,23 @@ a { color: var(--focus); }
     const step = W < 600 ? 6 : 3;
     weeks.forEach((wk, i) => { if (i % step === (25 % step)) svg += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle" font-size="11" fill="${ink3}">${fmtDate(wk)}</text>`; });
     svg += `<line id="xh" x1="0" x2="0" y1="${mt}" y2="${H - mb}" stroke="${ink3}" stroke-width="1" visibility="hidden"/>`;
+    // Незаконченная неделя рисуется пунктиром и полым маркером: клики и открытия по ней ещё набираются.
+    const solidEnd = partial ? 24 : 25;
     for (const s of series) {
       let d = "", pen = false;
-      s.vals.forEach((v, i) => { if (v == null) { pen = false; return; } d += `${pen ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`; pen = true; });
+      s.vals.forEach((v, i) => { if (i > solidEnd) return; if (v == null) { pen = false; return; } d += `${pen ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`; pen = true; });
       svg += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+      if (partial && s.vals[25] != null && s.vals[24] != null)
+        svg += `<path d="M${x(24).toFixed(1)},${y(s.vals[24]).toFixed(1)}L${x(25).toFixed(1)},${y(s.vals[25]).toFixed(1)}" fill="none" stroke="${s.color}" stroke-width="2" stroke-dasharray="4 4" stroke-linecap="round"/>`;
       s.vals.forEach((v, i) => {
         const prev = s.vals[i - 1], next = s.vals[i + 1];
-        if (v != null && prev == null && next == null) svg += `<circle cx="${x(i)}" cy="${y(v)}" r="4" fill="${s.color}" stroke="${surf}" stroke-width="2"/>`;
+        if (v != null && prev == null && next == null && !(partial && i === 25)) svg += `<circle cx="${x(i)}" cy="${y(v)}" r="4" fill="${s.color}" stroke="${surf}" stroke-width="2"/>`;
       });
       const li = s.vals.map((v, i) => v != null ? i : -1).filter(i => i >= 0).pop();
-      if (li != null) svg += `<circle cx="${x(li)}" cy="${y(s.vals[li])}" r="4" fill="${s.color}" stroke="${surf}" stroke-width="2"/>`;
+      if (li != null) {
+        const open = partial && li === 25;
+        svg += `<circle cx="${x(li)}" cy="${y(s.vals[li])}" r="4" fill="${open ? surf : s.color}" stroke="${open ? s.color : surf}" stroke-width="2"/>`;
+      }
     }
     svg += `<g id="hdots"></g><rect x="${ml}" y="${mt}" width="${W - ml - mr}" height="${H - mt - mb}" fill="transparent" id="hit"/></svg>`;
     box.insertAdjacentHTML("afterbegin", svg);
@@ -552,6 +583,7 @@ a { color: var(--focus); }
     R = data;
     R.rows.sort((a, b) => a.d.localeCompare(b.d));
     R.thr = R.thresholds || { unsub: 0.01, bounce: 0.05 };
+    const rw = document.getElementById("rate-win"); if (rw && R.display) rw.textContent = R.display.rate_window_days;
     Object.keys(R.scenarios).forEach((s, i) => colorOf[s] = SLOTS[i % SLOTS.length]);
     const stamp = document.getElementById("stamp");
     if (!R.rows.length) {

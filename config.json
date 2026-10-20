@@ -1,5 +1,5 @@
 {
-  "_help": "Настройки отчёта. scenarios: ID сценария Sendsay (номер из адреса app.sendsay.ru/automation/workflows/<ID>) -> название, продукт, язык (ru/en/auto). Сценарии, которых тут нет, всё равно попадут в отчёт под именем «Сценарий #ID», если auto_discover = true.",
+  "_help": "Настройки отчёта. scenarios: ID сценария Sendsay (номер из адреса app.sendsay.ru/automation/workflows/<ID>) -> название, продукт, язык (ru/en/auto). Сценарии, которых тут нет, всё равно попадут в отчёт под именем «Сценарий #ID», если auto_discover = true. merge_into: ID сценария, с которым склеить этот (например, старая EN-версия цепочки, которую объединили с ru+en) — его письма попадут в карточки и графики того сценария.",
   "start_date": "2026-04-01",
   "auto_discover": true,
   "scenarios": {
@@ -32,6 +32,10 @@
         ]
       }
     },
+    "4": {
+      "name": "Welcome Capitalist (en), до объединения 01.10",
+      "merge_into": "5"
+    },
     "6": {
       "name": "After KYB Capitalist",
       "product": "Capitalist",
@@ -58,8 +62,7 @@
     }
   },
   "exclude_scenarios": [
-    "2",
-    "4"
+    "2"
   ],
   "alerts": {
     "silence_days": 3,
@@ -74,6 +77,10 @@
     "unsub_min_delivered": 50,
     "or_drop_ratio": 0.7,
     "or_min_delivered": 100
+  },
+  "display": {
+    "_help": "min_delivered: если у письма за период доставлено меньше, сравнения (изменения к прошлому периоду и пороги) не показываются — на малом объёме одно событие меняет процент в разы.",
+    "min_delivered": 50
   },
   "benchmarks": {
     "_help": "Ориентиры для карточек писем. first — первое письмо цепочки, next — остальные письма. Источник: GetResponse Email Marketing Benchmarks (отчёт 2024, данные 2023). OR не оцениваем: открытия искажены Apple Mail Privacy Protection.",
