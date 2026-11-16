@@ -7,3 +7,8 @@ __pycache__/
 # на сайт они попадают только зашифрованными (секрет REPORT_PASSWORD).
 data/daily.json
 data/alerts.json
+
+# Контакты по людям (адреса) — только локально и в раннере, в репозиторий не попадают.
+data/touch.json
+data/touch_demo.json
+data/demo_backoffice.csv

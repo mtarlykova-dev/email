@@ -107,5 +107,76 @@
       "unsub": 0.0008,
       "bounce": 0.0179
     }
+  },
+  "conversions": {
+    "_help": "Цели цепочек для блока «Конверсии». Ключ — ID сценария (как в scenarios). target — типы событий из выгрузки бэк-офиса, любое из них засчитывается как целевое действие; secondary — дополнительное действие (считается отдельно); window_days — сколько дней после клика или открытия событие ещё засчитывается письму. days — за сколько дней берём доставки, открытия и клики из Sendsay. События считаются только после первого письма цепочки, которое получил человек.",
+    "days": 90,
+    "events": {
+      "kyc_passed": "Верификация KYC пройдена",
+      "kyb_passed": "Верификация KYB пройдена",
+      "deposit": "Пополнение баланса",
+      "transaction": "Транзакция",
+      "card_issued": "Выпуск карты",
+      "card_topup": "Пополнение карты"
+    },
+    "goals": {
+      "1": {
+        "who": "Зарегистрировался, входил в ЛК, 7+ дней без действий",
+        "target": [
+          "deposit",
+          "transaction",
+          "kyc_passed",
+          "kyb_passed"
+        ],
+        "target_label": "Любое действие в ЛК: пополнение, транзакция, верификация KYC или KYB",
+        "secondary": [],
+        "window_days": 7
+      },
+      "5": {
+        "who": "Новая регистрация Capitalist",
+        "target": [
+          "kyc_passed",
+          "kyb_passed"
+        ],
+        "target_label": "Пройдена верификация (KYC или KYB)",
+        "secondary": [
+          "deposit"
+        ],
+        "window_days": 7
+      },
+      "6": {
+        "who": "Прошёл верификацию KYB",
+        "target": [
+          "deposit",
+          "transaction"
+        ],
+        "target_label": "Первое пополнение баланса или транзакция",
+        "secondary": [],
+        "window_days": 7
+      },
+      "3": {
+        "who": "Новая регистрация CardsPro / заявка White Label",
+        "target": [
+          "card_issued"
+        ],
+        "target_label": "Выпуск первой карты",
+        "secondary": [
+          "card_topup"
+        ],
+        "window_days": 7
+      },
+      "8": {
+        "who": "Клиенты CardsPro без активности",
+        "target": [
+          "card_issued",
+          "card_topup",
+          "deposit",
+          "transaction"
+        ],
+        "target_label": "Первая операция после входа в цепочку",
+        "secondary": [],
+        "window_days": 14
+      }
+    }
   }
 }

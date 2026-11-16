@@ -178,6 +178,42 @@ body.locked .wrap > :not(header):not(#lock) { display: none; }
 [hidden] { display: none !important; }
 .foot { margin-top: 56px; color: var(--ink-3); font-size: 12px; max-width: 72ch; }
 .foot p { margin: 4px 0; }
+/* Конверсии */
+.drop { margin-top: 18px; border: 1.5px dashed var(--line); border-radius: 12px; padding: 20px; display: grid; grid-template-columns: 1fr auto; gap: 12px 24px; align-items: center; background: var(--surface); }
+.drop.over { border-color: var(--focus); background: var(--track); }
+.drop b { font-weight: 600; }
+.drop p { margin: 2px 0 0; color: var(--ink-2); font-size: 13px; }
+.drop .acts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+@media (max-width: 640px) { .drop { grid-template-columns: 1fr; } .drop .acts { justify-content: flex-start; } }
+.btn { font: inherit; font-size: 13px; font-weight: 600; border: 0; border-radius: 8px; padding: 8px 12px; background: var(--s1); color: #fff; cursor: pointer; text-decoration: none; display: inline-block; }
+.btn.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); font-weight: 500; }
+.cols { margin-top: 10px; font-size: 13px; color: var(--ink-2); }
+.cols code { font-size: 12px; background: var(--track); border-radius: 4px; padding: 0 4px; color: var(--ink); }
+.cols ul { margin: 6px 0 0; padding-left: 18px; }
+.cstatus { margin-top: 14px; font-size: 14px; }
+.cstatus .err { color: var(--bad); }
+.cstatus .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.ccard { margin-top: 28px; }
+.ckpis { display: grid; grid-template-columns: repeat(5, 1fr); margin-top: 12px; }
+.ckpis > div { padding: 2px 14px 2px 0; }
+.ckpis > div + div { padding-left: 14px; border-left: 1px solid var(--line); }
+.ckpis .l { font-size: 12px; color: var(--ink-2); }
+.ckpis .v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.25; }
+.ckpis .d { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+@media (max-width: 760px) { .ckpis { grid-template-columns: repeat(2, 1fr); row-gap: 12px; } .ckpis > div:nth-child(odd) { border-left: 0; padding-left: 0; } }
+.split { margin-top: 12px; }
+.split .row { display: grid; grid-template-columns: 170px 1fr 70px; gap: 10px; align-items: center; font-size: 13px; margin-top: 4px; }
+.split .track { height: 10px; background: var(--track); border-radius: 0 5px 5px 0; position: relative; }
+.split .track b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0 5px 5px 0; }
+.split .row span:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.cnotes { margin: 10px 0 0; padding-left: 18px; font-size: 13px; color: var(--ink-2); }
+.cnotes li { margin-top: 2px; }
+.ctables { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 320px); gap: 24px; margin-top: 14px; }
+.ctables th { white-space: normal; vertical-align: bottom; }
+@media (max-width: 900px) { .ctables { grid-template-columns: 1fr; } }
+td.tw { white-space: normal; min-width: 180px; text-align: left; }
+#conv-goals th { text-align: left; }
+td.muted, span.muted { color: var(--ink-3); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
@@ -222,6 +258,34 @@ body.locked .wrap > :not(header):not(#lock) { display: none; }
     <div id="chains"></div>
   </section>
 
+  <section id="conv">
+    <h2>Конверсии в целевые действия</h2>
+    <p class="sub">У каждой цепочки своё целевое действие. Загрузите выгрузку бэк-офиса — отчёт сопоставит её с открытиями и кликами по письмам: действие засчитывается последнему письму цепочки, по которому человек кликнул до него (в пределах окна). Клики в Telegram считаются так же, как на сайт. Фильтры «Продукт» и «Сценарий» работают, период берётся из файла.</p>
+    <div class="tbl-wrap" id="conv-goals"></div>
+    <div class="drop" id="conv-drop">
+      <div>
+        <b>Выгрузка бэк-офиса</b>
+        <p>CSV или Excel по шаблону: одна строка — одно событие. Файл обрабатывается только в этом браузере и никуда не отправляется.</p>
+      </div>
+      <div class="acts">
+        <a class="btn ghost" href="templates/backoffice_events_template.csv" download>Скачать шаблон</a>
+        <label class="btn" for="conv-file">Выбрать файл</label>
+        <input type="file" id="conv-file" accept=".csv,.txt,.xlsx,.xls" hidden>
+      </div>
+    </div>
+    <details class="cols"><summary>Какие колонки нужны</summary>
+      <ul>
+        <li><code>email</code>, <code>login</code>, <code>id_back_office</code> — хотя бы одно; email ищем первым, потом логин и ID.</li>
+        <li><code>event</code> — тип события: <span id="conv-events"></span>. Можно по-русски: «Пополнение баланса», «Верификация KYB пройдена».</li>
+        <li><code>event_datetime</code> — дата и время по Москве, до минуты: <code>2026-11-18 14:32</code> или <code>18.11.2026 14:32</code>. Без времени событие считается в 23:59 этого дня.</li>
+        <li><code>product</code>, <code>amount</code> — по желанию.</li>
+        <li>Лучше всего выгружать все события за последние <span id="conv-days">90</span> дней каждый раз: тогда ничего не теряется на стыке недель.</li>
+      </ul>
+    </details>
+    <div class="cstatus" id="conv-status" role="status"></div>
+    <div id="conv-result"></div>
+  </section>
+
   <section>
     <div class="chart-head">
       <div>
@@ -249,6 +313,7 @@ body.locked .wrap > :not(header):not(#lock) { display: none; }
   </div>
 </div>
 
+<script src="conv.js"></script>
 <script>
 (() => {
   const SLOTS = ["--s1","--s2","--s3","--s4","--s5","--s6","--s7","--s8"];
@@ -598,7 +663,148 @@ body.locked .wrap > :not(header):not(#lock) { display: none; }
       (B ? `<p class="sub" style="margin-top:8px">Ориентиры: <a href="${esc(B.source_url)}" target="_blank" rel="noopener">${esc(B.source)}</a>. Публичных бенчмарков именно для B2B-финтеха нет, это ближайшие срезы.</p>` : "");
   }
 
-  function render() { renderAlerts(); renderKpis(); renderChains(); renderTrend(); renderMatrix(); }
+  // ---------- Конверсии ----------
+  let PW = "", convRes = null, convFile = null;
+  const convChains = () => {
+    const C = R.conv; if (!C || !C.goals) return [];
+    return Object.keys(C.goals).filter(seq => {
+      const g = C.goals[seq];
+      return (state.product === "all" || g.product === state.product) && (state.scenario === "all" || seq === state.scenario);
+    });
+  };
+  function convPeople(seq, rows) {
+    const C = R.conv, s = new Set();
+    for (const r of rows) if (C.letters[r[1]][0] === seq) s.add(r[0]);
+    return s.size;
+  }
+  function renderConvGoals() {
+    const C = R.conv, box = $("conv-goals");
+    if (!C || !C.goals || !Object.keys(C.goals).length) { box.innerHTML = `<p class="empty">Цели цепочек не заданы (config.json → conversions.goals).</p>`; return; }
+    $("conv-events").innerHTML = Object.entries(C.events).map(([k, l]) => `<code>${esc(k)}</code> (${esc(l)})`).join(", ");
+    $("conv-days").textContent = C.days;
+    const ev = list => (list || []).map(k => C.events[k] || k).join(", ");
+    const seqs = convChains();
+    const has = C.has_touch;
+    box.innerHTML = `<table><thead><tr><th>Цепочка</th><th>Кто входит</th><th>Целевое действие</th><th>Дополнительно</th><th>Окно</th>` +
+      (has ? `<th>Получили письма</th><th>Кликнули</th>` : "") + `</tr></thead><tbody>` +
+      seqs.map(seq => {
+        const g = C.goals[seq];
+        return `<tr><td class="tw"><b>${esc(g.name)}</b></td><td class="tw">${esc(g.who || "")}</td><td class="tw">${esc(g.target_label || ev(g.target))}<br><span class="muted">${esc(ev(g.target))}</span></td>` +
+          `<td class="tw">${g.secondary && g.secondary.length ? esc(ev(g.secondary)) : `<span class="muted">—</span>`}</td><td>${g.window_days || 7} дн.</td>` +
+          (has ? `<td>${fmtInt(convPeople(seq, C.d))}</td><td>${fmtInt(convPeople(seq, C.c))}</td>` : "") + `</tr>`;
+      }).join("") + `</tbody></table>` +
+      `<p class="sub" style="margin-top:8px">${has
+        ? `Получатели и клики — уникальные люди за ${C.days} дней (с ${fmtDate(C.since)}), данные Sendsay на ${new Date(C.touch_at).toLocaleString("ru-RU", { timeZone: "Europe/Moscow", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}.`
+        : `Данных по людям из Sendsay пока нет — они появятся после следующего обновления отчёта. Загрузить файл можно будет после этого.`}</p>`;
+  }
+
+  function download(name, text) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([text], { type: "text/csv;charset=utf-8" }));
+    a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+  function loadXLSX() {
+    if (window.XLSX) return Promise.resolve(window.XLSX);
+    return new Promise((ok, fail) => {
+      const sc = document.createElement("script");
+      sc.src = "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
+      sc.onload = () => ok(window.XLSX); sc.onerror = () => fail(new Error("не удалось загрузить чтение Excel"));
+      document.head.appendChild(sc);
+    });
+  }
+  async function readFile(file) {
+    if (/\.(xlsx|xls)$/i.test(file.name)) {
+      const X = await loadXLSX();
+      const wb = X.read(await file.arrayBuffer(), { cellDates: false });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      return X.utils.sheet_to_json(ws, { header: 1, raw: true, defval: "" })
+        .filter(r => r.some(c => String(c).trim() !== ""));
+    }
+    const buf = await file.arrayBuffer();
+    let text = new TextDecoder("utf-8").decode(buf);
+    if (text.includes("�")) text = new TextDecoder("windows-1251").decode(buf); // Excel «CSV» в кодировке Windows
+    return CONV.parseCSV(text);
+  }
+  async function handleFile(file) {
+    const st = $("conv-status");
+    if (!R.conv || !R.conv.has_touch) { st.innerHTML = `<span class="err">Нет данных по людям из Sendsay — дождитесь обновления отчёта.</span>`; return; }
+    st.textContent = `Читаю «${file.name}»…`; $("conv-result").innerHTML = "";
+    try {
+      const parsed = CONV.readRows(await readFile(file), R.conv.events);
+      if (parsed.missing.length) { st.innerHTML = `<span class="err">В файле не найдены колонки: ${esc(parsed.missing.join(", "))}. Сверьтесь с шаблоном.</span>`; return; }
+      if (!parsed.events.length) { st.innerHTML = `<span class="err">Не разобрана ни одна строка (${parsed.problems.length} с ошибками). Скачайте строки для проверки ниже.</span>`; }
+      st.textContent = `Сопоставляю ${fmtInt(parsed.events.length)} событий…`;
+      const hasher = await CONV.makeHasher(PW);
+      convRes = await CONV.match(R.conv, parsed, hasher);
+      convRes.noTime = parsed.events.filter(e => e.noTime).length;
+      convFile = { name: file.name, rows: parsed.events.length + parsed.problems.length };
+      renderConvResult();
+    } catch (err) {
+      st.innerHTML = `<span class="err">Не удалось обработать файл: ${esc(err.message)}. Попробуйте сохранить его как CSV.</span>`;
+    }
+  }
+  function setupConv() {
+    const input = $("conv-file"), drop = $("conv-drop");
+    input.onchange = () => { if (input.files[0]) handleFile(input.files[0]); input.value = ""; };
+    drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+    drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+    drop.addEventListener("drop", e => { e.preventDefault(); drop.classList.remove("over"); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+  }
+
+  function renderConvResult() {
+    const st = $("conv-status"), box = $("conv-result");
+    if (!convRes) { st.textContent = ""; box.innerHTML = ""; return; }
+    const C = R.conv, res = convRes, MIN = 20;
+    const found = res.how.email + res.how.login + res.how.bo;
+    const pct = (a, b) => b ? fmtPct(a / b) : "—";
+    const issues = res.unmatched.length + res.problems.length + res.afterGoal.length;
+    st.innerHTML = `Файл «${esc(convFile.name)}»: ${fmtInt(convFile.rows)} строк, события с ${esc(CONV.fmtDay(res.coverage[0]))} по ${esc(CONV.fmtDay(res.coverage[1]))}. ` +
+      `Найдено в рассылках: <b>${fmtInt(found)}</b> (по email ${fmtInt(res.how.email)}, по логину ${fmtInt(res.how.login)}, по ID ${fmtInt(res.how.bo)}); ` +
+      `нет среди получателей писем: ${fmtInt(res.unmatched.length)}` + (res.problems.length ? `; не разобрано строк: ${fmtInt(res.problems.length)}` : "") +
+      (res.noTime ? `; без времени: ${fmtInt(res.noTime)} (считаем в 23:59)` : "") + `.` +
+      `<div class="acts"><button type="button" class="btn ghost" id="conv-dl-sum">Скачать итоги (CSV)</button>` +
+      (issues ? `<button type="button" class="btn ghost" id="conv-dl-iss">Скачать строки для проверки (${fmtInt(issues)})</button>` : "") + `</div>`;
+    $("conv-dl-sum").onclick = () => download(`конверсии_${CONV.fmtDay(res.coverage[1]).replace(/\./g, "-")}.csv`, CONV.toCSV(CONV.summaryRows(C, res)));
+    if (issues) $("conv-dl-iss").onclick = () => download(`проверить_${CONV.fmtDay(res.coverage[1]).replace(/\./g, "-")}.csv`, CONV.toCSV(CONV.issueRows(res)));
+
+    const seqs = new Set(convChains());
+    let html = "";
+    for (const ch of res.chains) {
+      if (!seqs.has(ch.seq)) continue;
+      const g = ch.goal, non = ch.participants - ch.clickers;
+      const crC = ch.clickers ? ch.viaClick / ch.clickers : null, crN = non ? ch.nonClickersConv / non : null;
+      const mx = Math.max(crC || 0, crN || 0, 1e-9);
+      html += `<div class="ccard scenario" style="--sc:var(${colorOf[ch.seq] || "--s1"})">
+        <div class="sc-head"><h3><i></i>${esc(g.name)}</h3><span class="tag">${esc(g.product)}</span><span class="sc-tot">Цель: ${esc(g.target_label)} · окно ${g.window_days || 7} дн.</span></div>`;
+      if (!ch.participants) { html += `<p class="empty">За период файла никто не получал письма этой цепочки.</p></div>`; continue; }
+      html += `<div class="ckpis">
+        <div><div class="l">Получили письма</div><div class="v">${fmtInt(ch.participants)}</div><div class="d">вошли в цепочку за период файла</div></div>
+        <div><div class="l">Кликнули</div><div class="v">${fmtInt(ch.clickers)}</div><div class="d">${pct(ch.clickers, ch.participants)} от получивших</div></div>
+        <div><div class="l">Целевое действие</div><div class="v">${fmtInt(ch.total)}</div><div class="d">${pct(ch.total, ch.participants)} от получивших</div></div>
+        <div><div class="l">После клика по письму</div><div class="v">${fmtInt(ch.viaClick)}</div><div class="d">ещё ${fmtInt(ch.viaOpen)} после открытия, ${fmtInt(ch.self)} сами</div></div>
+        <div><div class="l">${g.secondary && g.secondary.length ? esc(g.secondary.map(k => C.events[k] || k).join(", ")) : "Дополнительно"}</div><div class="v">${g.secondary && g.secondary.length ? fmtInt(ch.secTotal) : "—"}</div><div class="d">${g.secondary && g.secondary.length ? `${fmtInt(ch.secViaClick)} после клика` : "не задано"}</div></div>
+      </div>
+      <div class="split">
+        <div class="row"><span>Кликнули → действие</span><div class="track"><b style="width:${((crC || 0) / mx * 100).toFixed(1)}%;background:var(--f3)"></b></div><span>${ch.clickers >= MIN ? fmtPct(crC) : `<span class="muted" title="Меньше ${MIN} человек">${fmtPct(crC)}</span>`}</span></div>
+        <div class="row"><span>Не кликали → действие</span><div class="track"><b style="width:${((crN || 0) / mx * 100).toFixed(1)}%;background:var(--f1)"></b></div><span>${non >= MIN ? fmtPct(crN) : `<span class="muted">${fmtPct(crN)}</span>`}</span></div>
+      </div>`;
+      const notes = [];
+      if (ch.clickers < MIN) notes.push(`Кликнувших меньше ${MIN} — проценты по ним пока ненадёжны.`);
+      if (ch.recent) notes.push(`${fmtInt(ch.recent)} ${ch.recent === 1 ? "человек вошёл" : "человек вошли"} в цепочку меньше чем за ${g.window_days || 7} дн. до конца файла — их действия ещё могут появиться в следующей выгрузке.`);
+      if (ch.before) notes.push(`${fmtInt(ch.before)} уже ${ch.before === 1 ? "сделал" : "сделали"} целевое действие до первого письма цепочки — проверьте условие входа в сценарий.`);
+      if (ch.kept) notes.push(`${fmtInt(ch.kept)} ${ch.kept === 1 ? "продолжал" : "продолжали"} получать письма цепочки после целевого действия — стоит добавить выход из сценария (список — в «Строках для проверки»).`);
+      if (notes.length) html += `<ul class="cnotes">${notes.map(n => `<li>${n}</li>`).join("")}</ul>`;
+      html += `<div class="ctables"><div class="tbl-wrap"><table><thead><tr><th>Письмо</th><th>Получили</th><th>Кликнули</th><th>Действие после клика</th><th>Клик → действие</th><th>После открытия</th></tr></thead><tbody>` +
+        ch.letters.map(l => `<tr><td class="tw">${esc(C.letters[l.li][2])}</td><td>${fmtInt(l.got)}</td><td>${fmtInt(l.clicked)}</td><td>${fmtInt(l.viaClick)}</td><td>${l.clicked ? (l.clicked >= MIN ? pct(l.viaClick, l.clicked) : `<span class="muted">${pct(l.viaClick, l.clicked)}</span>`) : "—"}</td><td>${fmtInt(l.viaOpen)}</td></tr>`).join("") +
+        `</tbody></table></div><div class="tbl-wrap"><table><thead><tr><th>Куда вёл клик</th><th>Кликнули</th><th>Действие</th></tr></thead><tbody>` +
+        ch.dest.map((d, i) => d.clickers ? `<tr><td>${CONV.DEST[i]}</td><td>${fmtInt(d.clickers)}</td><td>${fmtInt(d.conv)} <span class="muted">(${pct(d.conv, d.clickers)})</span></td></tr>` : "").join("") +
+        `</tbody></table></div></div></div>`;
+    }
+    box.innerHTML = html || `<p class="empty">Под выбранный фильтр цепочек нет.</p>`;
+  }
+
+  function render() { renderAlerts(); renderKpis(); renderChains(); renderConvGoals(); renderConvResult(); renderTrend(); renderMatrix(); }
 
   const PW_KEY = "capitalist-email-report-pw";
   const $ = id => document.getElementById(id);
@@ -610,7 +816,8 @@ body.locked .wrap > :not(header):not(#lock) { display: none; }
     const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64(enc.iv) }, key, b64(enc.ct));
     return JSON.parse(new TextDecoder().decode(pt));
   }
-  function unlock(data) {
+  function unlock(data, pw) {
+    PW = pw || ""; // нужен для хэшей в блоке «Конверсии»
     document.body.classList.remove("locked"); $("lock").hidden = true; start(data);
   }
   function showLock(enc, msg) {
@@ -623,7 +830,7 @@ body.locked .wrap > :not(header):not(#lock) { display: none; }
       try {
         const d = await decrypt(enc, pw);
         try { if ($("remember").checked) localStorage.setItem(PW_KEY, pw); else localStorage.removeItem(PW_KEY); } catch (_) {}
-        $("logout").hidden = false; unlock(d);
+        $("logout").hidden = false; unlock(d, pw);
       } catch (_) { $("pwErr").textContent = "Неверный пароль"; }
       finally { $("pwBtn").disabled = false; $("pwBtn").textContent = "Открыть отчёт"; }
     };
@@ -637,7 +844,7 @@ body.locked .wrap > :not(header):not(#lock) { display: none; }
         const enc = await r.json();
         let saved = null; try { saved = localStorage.getItem(PW_KEY); } catch (_) {}
         if (saved) {
-          try { const d = await decrypt(enc, saved); $("logout").hidden = false; return unlock(d); }
+          try { const d = await decrypt(enc, saved); $("logout").hidden = false; return unlock(d, saved); }
           catch (_) { try { localStorage.removeItem(PW_KEY); } catch (__) {} return showLock(enc, "Пароль изменился — введите новый"); }
         }
         return showLock(enc);
@@ -651,7 +858,7 @@ body.locked .wrap > :not(header):not(#lock) { display: none; }
         return;
       }
       if (!p.ok) throw new Error("HTTP " + p.status);
-      unlock(await p.json());
+      unlock(await p.json(), "");
     } catch (err) {
       $("stamp").textContent = "Не удалось загрузить данные: " + err.message;
     }
@@ -672,6 +879,7 @@ body.locked .wrap > :not(header):not(#lock) { display: none; }
     const gen = R.generated_at ? new Date(R.generated_at).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Moscow" }) : "—";
     stamp.textContent = `Обновлено ${gen} МСК` + (R.source === "demo" ? " · демо-данные" : "");
     setupFilters();
+    setupConv();
     render();
     let t; addEventListener("resize", () => { clearTimeout(t); t = setTimeout(renderTrend, 150); });
   }

@@ -69,6 +69,67 @@ def main():
         json.dump({"generated_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
                    "source": "demo", "rows": rows}, f, ensure_ascii=False)
     print(f"Демо-данные: {out} ({len(rows)} строк)")
+    demo_touches(today)
+
+
+# Цели демо-цепочек (как в config.json) -> какие события генерировать.
+DEMO_TARGET = {"5": "kyc_passed", "3": "card_issued", "1": "deposit", "6": "transaction", "8": "card_topup"}
+
+
+def demo_touches(today):
+    """Выдуманные контакты по людям (data/touch_demo.json) и выгрузка бэк-офиса
+    (data/demo_backoffice.csv) для проверки блока «Конверсии»."""
+    issues, people, deliv, reads, clicks, events = {}, {}, [], [], [], []
+    by_seq = {}
+    for i, (seq, name, subj, lag, or_, ctr, *_rest) in enumerate(LETTERS):
+        by_seq.setdefault(seq, []).append((i, name, subj, lag, or_, ctr))
+        issues[str(1000 + i)] = [seq, name, subj]
+    n = 0
+    for seq, letters in by_seq.items():
+        for _ in range(VOLUME[seq] * 9):
+            n += 1
+            email = f"user{n}@example.com"
+            people[email] = [f"login{n}" if n % 2 else "", str(500000 + n) if n % 2 else ""]
+            lang = "en" if random.random() < .35 else "ru"
+            mine = [l for l in letters if (" en" in l[1] or "Your" in l[1] or "You" in l[1]) == (lang == "en")] or letters
+            start = dt.datetime.combine(today - dt.timedelta(days=random.randint(2, 85)), dt.time(random.randint(7, 20), random.randint(0, 59)))
+            clicked_at = None
+            for i, name, subj, lag, or_, ctr in mine:
+                t = start + dt.timedelta(days=lag)
+                if t.date() >= today:
+                    break
+                deliv.append([email, str(1000 + i), t.strftime("%Y-%m-%d %H:%M")])
+                if random.random() < or_ * 1.3:
+                    ot = t + dt.timedelta(minutes=random.randint(5, 600))
+                    reads.append([email, str(1000 + i), ot.strftime("%Y-%m-%d %H:%M")])
+                    if random.random() < min(.6, ctr * 4):
+                        ct = ot + dt.timedelta(minutes=random.randint(1, 30))
+                        dest = random.choice(["site", "site", "tg", "other"])
+                        clicks.append([email, str(1000 + i), ct.strftime("%Y-%m-%d %H:%M"), dest])
+                        clicked_at = clicked_at or ct
+            # Целевое действие: после клика чаще, без клика — реже.
+            p = .35 if clicked_at else .07
+            if random.random() < p:
+                base = clicked_at or start
+                et = base + dt.timedelta(hours=random.randint(1, 120))
+                if et.date() < today:
+                    events.append([email, people[email][0], people[email][1], DEMO_TARGET[seq], et.strftime("%Y-%m-%d %H:%M")])
+    # Пара строк, которых нет в Sendsay, и событие до входа в цепочку.
+    events.append(["stranger@example.com", "", "", "deposit", (dt.datetime.combine(today, dt.time(9)) - dt.timedelta(days=3)).strftime("%Y-%m-%d %H:%M")])
+    out = ROOT / "data" / "touch_demo.json"
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump({"generated_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+                   "since": (today - dt.timedelta(days=90)).isoformat(), "issues": issues, "people": people,
+                   "deliv": deliv, "read": reads, "click": clicks}, f, ensure_ascii=False)
+    bo = ROOT / "data" / "demo_backoffice.csv"
+    with open(bo, "w", encoding="utf-8") as f:
+        f.write("email;login;id_back_office;product;event;event_datetime;amount\n")
+        for email, lg, boid, ev, t in events:
+            prod = "CardsPro" if ev.startswith("card") else "Capitalist"
+            # Часть строк без email — сопоставление по логину / ID бэк-офиса.
+            em = "" if (lg and random.random() < .3) else email
+            f.write(f"{em};{lg};{boid};{prod};{ev};{t};\n")
+    print(f"Демо-контакты: {out} (людей {len(people)}, кликов {len(clicks)}); выгрузка бэк-офиса: {bo} ({len(events)} строк)")
 
 
 if __name__ == "__main__":
