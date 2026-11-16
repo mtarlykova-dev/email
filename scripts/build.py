@@ -230,6 +230,87 @@ def compute_alerts(rows, meta, cfg, today):
     return alerts
 
 
+MSK_EPOCH = dt.datetime(2026, 1, 1, tzinfo=MSK)
+
+
+def to_min(s):
+    """«2026-11-10 14:32» (время Sendsay, МСК) -> минуты от 01.01.2026 МСК."""
+    t = dt.datetime.strptime(s[:16], "%Y-%m-%d %H:%M").replace(tzinfo=MSK)
+    return int((t - MSK_EPOCH).total_seconds() // 60)
+
+
+def match_key(password):
+    import hashlib
+    return hashlib.sha256(("conv-match-v1:" + password).encode("utf-8")).digest()
+
+
+def hkey(key, kind, value):
+    """Хэш идентификатора для сопоставления с выгрузкой бэк-офиса. Страница считает тот же
+    HMAC-SHA256 в браузере (ключ — из пароля отчёта), поэтому адресов в данных нет."""
+    import hashlib
+    import hmac
+    value = (value or "").strip().lower()
+    if not value:
+        return ""
+    return hmac.new(key, f"{kind}:{value}".encode("utf-8"), hashlib.sha256).hexdigest()[:16]
+
+
+def build_conversions(cfg, rows, meta, merges, touch, password):
+    """Данные для блока «Конверсии»: цели цепочек + контакты по людям (только хэши)."""
+    conv = cfg.get("conversions", {})
+    goals = {}
+    for seq, g in conv.get("goals", {}).items():
+        if seq in meta:
+            goals[seq] = dict(g, name=meta[seq]["name"], product=meta[seq]["product"])
+    out = {"goals": goals, "events": conv.get("events", {}), "days": conv.get("days", 90),
+           "epoch": MSK_EPOCH.isoformat(), "hash": "hmac-sha256/16 v1", "has_touch": bool(touch)}
+    if not touch:
+        return out
+
+    # Письма: тот же номер в цепочке, что и в карточках (assign_letters по названию и теме).
+    labels = letter_labels(rows)
+    by_name = {}
+    for r in rows:
+        by_name[(r["seq"], r["name"], r["subject"])] = (r["letter"], r["lang"], r["step"])
+    letters, letter_idx, issue_letter = [], {}, {}
+    for iid, (seq, name, subj) in touch["issues"].items():
+        seq = merges.get(seq, seq)
+        hit = by_name.get((seq, name, subj))
+        if hit is None:  # выпуск не попал в агрегаты — ищем письмо по названию
+            hit = next((v for (s, n, _), v in by_name.items() if s == seq and n == name), None)
+        if hit is None:
+            hit = (f"?:{name or subj}", detect_lang(subj, name), 0)
+        key = (seq, hit[0])
+        if key not in letter_idx:
+            label = labels.get(key) or f"Письмо ? «{subj or name}»"
+            letter_idx[key] = len(letters)
+            letters.append([seq, hit[0], label, hit[2], hit[1]])
+        issue_letter[iid] = letter_idx[key]
+
+    key = match_key(password)
+    people, pidx = [], {}
+    for email, (login, bo) in touch["people"].items():
+        pidx[email] = len(people)
+        people.append([hkey(key, "email", email), hkey(key, "login", login), hkey(key, "bo", bo)])
+
+    def conv_rows(src, extra=False):
+        res = []
+        for r in src:
+            if r[0] in pidx and r[1] in issue_letter:
+                row = [pidx[r[0]], issue_letter[r[1]], to_min(r[2])]
+                if extra:
+                    row.append({"tg": 1, "site": 0}.get(r[3], 2))
+                res.append(row)
+        res.sort(key=lambda x: x[2])
+        return res
+
+    out.update({
+        "since": touch["since"], "touch_at": touch["generated_at"], "letters": letters, "people": people,
+        "d": conv_rows(touch["deliv"]), "o": conv_rows(touch["read"]), "c": conv_rows(touch["click"], True),
+    })
+    return out
+
+
 def write_summary(alerts, meta, rows, generated_at):
     path = os.environ.get("GITHUB_STEP_SUMMARY")
     if not path:
@@ -245,6 +326,13 @@ def main():
     data_path = DATA_FILE
     if "--data" in sys.argv:
         data_path = ROOT / sys.argv[sys.argv.index("--data") + 1]
+    touch_path = ROOT / "data" / "touch.json"
+    if "--touch" in sys.argv:
+        touch_path = ROOT / sys.argv[sys.argv.index("--touch") + 1]
+    touch = None
+    if touch_path.exists():
+        with open(touch_path, encoding="utf-8") as f:
+            touch = json.load(f)
     cfg = load_config()
     if data_path.exists():
         with open(data_path, encoding="utf-8") as f:
@@ -296,6 +384,7 @@ def main():
         "display": {"min_delivered": cfg.get("display", {}).get("min_delivered", 50),
                     "rate_window_days": cfg["alerts"].get("rate_window_days", 14)},
         "rows": rows,
+        "conv": build_conversions(cfg, rows, meta, merges, touch, os.environ.get("REPORT_PASSWORD", "")),
     }
     raw = json.dumps(report, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     password = os.environ.get("REPORT_PASSWORD", "")
