@@ -271,7 +271,7 @@ td.warn { color: var(--bad); }
 
   <section>
     <h2>Цепочки по письмам</h2>
-    <p class="sub">Письма в порядке цепочки. Полосы показывают, какая доля отправленных писем доставлена, открыта и дала клик. Метрики считаются от доставленных, открытия и клики уникальные. Справа от CTR и CTOR — изменение к прошлому периоду такой же длины (зелёный — лучше, красный — хуже). У отписок и ошибок — сравнение с порогом алертов: «выше порога» значит, что письмо стоит проверить; сами алерты считаются по последним <span id="rate-win">14</span> дням. Если доставлено мало писем, сравнения не показываются. OR не сравниваем: открытия завышены из-за Apple Mail Privacy Protection.</p>
+    <p class="sub">Письма в порядке цепочки. Полосы показывают, какая доля отправленных писем доставлена, открыта и дала клик. Метрики считаются от доставленных, открытия и клики уникальные. Справа от CTR и CTOR — изменение к прошлому периоду такой же длины (зелёный — лучше, красный — хуже). У отписок — сравнение с порогом алертов: «выше порога» значит, что письмо стоит проверить; сами алерты считаются по последним <span id="rate-win">14</span> дням. Если доставлено мало писем, сравнения не показываются. OR не сравниваем: открытия завышены из-за Apple Mail Privacy Protection.</p>
     <div class="legend">
       <span><i style="background:var(--track)"></i>Отправлено</span>
       <span><i style="background:var(--f1)"></i>Доставлено</span>
@@ -347,7 +347,7 @@ td.warn { color: var(--bad); }
 
     <section>
       <h2>Все рассылки за период</h2>
-      <p class="sub">Метрики считаются так же, как у триггеров: от доставленных, открытия и клики уникальные. Нажмите на заголовок колонки, чтобы отсортировать. Красным — отписки или ошибки выше порога для массовых рассылок (<span id="m-thr"></span>).</p>
+      <p class="sub">Метрики считаются так же, как у триггеров: от доставленных, открытия и клики уникальные. Нажмите на заголовок колонки, чтобы отсортировать. Красным — отписки выше порога для массовых рассылок (<span id="m-thr"></span>).</p>
       <div class="tbl-wrap" id="m-table"></div>
     </section>
 
@@ -359,7 +359,7 @@ td.warn { color: var(--bad); }
   </div>
 
   <div class="foot">
-    <p>OR — уникальные открытия / доставлено. CTR — уникальные клики / доставлено. CTOR — уникальные клики / уникальные открытия. Отписки — от доставленных, ошибки — от отправленных.</p>
+    <p>OR — уникальные открытия / доставлено. CTR — уникальные клики / доставлено. CTOR — уникальные клики / уникальные открытия. Отписки — от доставленных.</p>
     <p>Открытия и клики за последние 2–3 дня ещё набираются, поэтому последняя неделя обычно ниже реальных значений.</p>
     <p><button class="logout" id="logout" type="button" hidden>Выйти и забыть пароль на этом устройстве</button></p>
     <p>Массовые рассылки — выпуски Sendsay, отправленные не из сценария. Их открытия и клики пересчитываются за всё время при каждом обновлении.</p>
@@ -573,7 +573,6 @@ td.warn { color: var(--bad); }
               <dt>CTR</dt><dd>${fmtPct(r.ctr, 2)}</dd>${delta("ctr", 2)}
               <dt>CTOR</dt><dd>${fmtPct(r.ctor)}</dd>${delta("ctor", 1)}
               <dt>Отписки</dt><dd>${fmtPct(r.unsub, 2)}</dd>${limit("unsub", 2)}
-              <dt>Ошибки</dt><dd>${fmtPct(r.bounce)}</dd>${limit("bounce", 1)}
             </dl>
             ${thin ? `<div class="thinline">Мало данных: доставлено ${fmtInt(l.t.delivered)} — сравнения не показываем.</div>` : ""}
             ${bm ? `<div class="bmline">Внешний ориентир ${l.step === 1 ? "для 1-го письма" : "для следующих писем"}: CTR ${fmtPct(bm.ctr, 1)}, CTOR ${fmtPct(bm.ctor, 0)}</div>` : ""}
@@ -706,7 +705,7 @@ td.warn { color: var(--bad); }
     }
     const box = document.getElementById("matrix");
     if (!groups.length) { box.innerHTML = `<p class="empty">За выбранный период данных нет.</p>`; return; }
-    const cols = [["or", "OR", 1], ["ctr", "CTR", 2], ["ctor", "CTOR", 1], ["unsub", "Отписки", 2], ["bounce", "Ошибки", 1]];
+    const cols = [["or", "OR", 1], ["ctr", "CTR", 2], ["ctor", "CTOR", 1], ["unsub", "Отписки", 2]];
     const mx = Object.fromEntries(cols.map(([k]) => [k, Math.max(...groups.map(g => g.r[k] || 0), 1e-9)]));
     const B = R.benchmarks;
     const bmRows = B ? ["industry", "next", "first"].filter(k => B[k]).map(k =>
@@ -888,7 +887,7 @@ td.warn { color: var(--bad); }
     const rows = all.filter(r => r.d >= s && r.d <= e);
     const ids = ["m-kpis", "m-legend", "m-table", "m-compare"];
     const chart = $("m-chart"); chart.querySelectorAll("svg, .empty").forEach(n => n.remove());
-    $("m-thr").textContent = `отписки > ${fmtPct(C.thresholds.unsub, 1)}, ошибки > ${fmtPct(C.thresholds.bounce, 0)}`;
+    $("m-thr").textContent = `больше ${fmtPct(C.thresholds.unsub, 1)}`;
     if (!C.rows.length) {
       ids.forEach(id => $(id).innerHTML = "");
       $("m-note").textContent = "";
@@ -980,7 +979,7 @@ td.warn { color: var(--bad); }
     const cols = [
       ["d", "Дата", r => r.dt], ["subject", "Тема и выпуск", r => (r.subject || r.name).toLowerCase()], ["product", "Продукт", r => r.product], ["lang", "Язык", r => r.lang],
       ["sent", "Отправлено", r => r.sent], ["deliv", "Доставлено", r => rates(r).deliv], ["or", "OR", r => rates(r).or],
-      ["ctr", "CTR", r => rates(r).ctr], ["ctor", "CTOR", r => rates(r).ctor], ["unsub", "Отписки", r => rates(r).unsub], ["bounce", "Ошибки", r => rates(r).bounce],
+      ["ctr", "CTR", r => rates(r).ctr], ["ctor", "CTOR", r => rates(r).ctor], ["unsub", "Отписки", r => rates(r).unsub],
     ];
     const [sk, sd] = state.msort, getter = cols.find(c => c[0] === sk)[2];
     const sorted = [...rows].sort((a, b) => { const va = getter(a), vb = getter(b); return (va == null) - (vb == null) || (va < vb ? -1 : va > vb ? 1 : 0) * sd; });
@@ -992,7 +991,7 @@ td.warn { color: var(--bad); }
         return `<tr><td>${fmtDT(r.dt)}${fresh ? `<div class="when">набирается</div>` : ""}</td><td class="camp"><b>${esc(r.subject || r.name)}</b>${sub}</td><td>${esc(r.product)}</td><td>${esc(r.lang)}</td>` +
           `<td>${fmtInt(r.sent)}</td><td>${fmtPct(rr.deliv)}</td><td>${fmtPct(rr.or)}</td>` +
           `<td><span class="cell">${fmtPct(rr.ctr, 2)}<span class="mini"><b style="width:${((rr.ctr || 0) / mxCtr * 100).toFixed(1)}%"></b></span></span></td>` +
-          `<td>${fmtPct(rr.ctor)}</td><td class="${rr.unsub > thr.unsub ? "warn" : ""}">${fmtPct(rr.unsub, 2)}</td><td class="${rr.bounce > thr.bounce ? "warn" : ""}">${fmtPct(rr.bounce)}</td></tr>`;
+          `<td>${fmtPct(rr.ctor)}</td><td class="${rr.unsub > thr.unsub ? "warn" : ""}">${fmtPct(rr.unsub, 2)}</td></tr>`;
       }).join("") + `</tbody></table>`;
     $("m-table").querySelectorAll("th.sort").forEach(th => th.onclick = () => {
       const k = th.dataset.k;
@@ -1002,7 +1001,7 @@ td.warn { color: var(--bad); }
 
     // Сравнение с триггерами
     const trig = rates(sum(R.rows.filter(r => r.d >= s && r.d <= e && (state.product === "all" || R.scenarios[r.seq].product === state.product) && (state.lang === "all" || r.lang === state.lang))));
-    const ccols = [["or", "OR", 1], ["ctr", "CTR", 2], ["ctor", "CTOR", 1], ["unsub", "Отписки", 2], ["bounce", "Ошибки", 1]];
+    const ccols = [["or", "OR", 1], ["ctr", "CTR", 2], ["ctor", "CTOR", 1], ["unsub", "Отписки", 2]];
     const line = (l, r, cls = "") => `<tr class="${cls}"><td>${l}</td><td>${r.sent != null ? fmtInt(r.sent) : "—"}</td>${ccols.map(([k, , d]) => `<td>${r[k] != null ? fmtPct(r[k], d) : "—"}</td>`).join("")}</tr>`;
     const B = R.benchmarks && R.benchmarks.industry;
     $("m-compare").innerHTML = `<table><thead><tr><th></th><th>Отправлено</th>${ccols.map(c => `<th>${c[1]}</th>`).join("")}</tr></thead><tbody>` +
