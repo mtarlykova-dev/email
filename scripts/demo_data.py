@@ -3,7 +3,7 @@
 
 Запуск:
   python scripts/demo_data.py
-  python scripts/build.py --data data/demo.json
+  python scripts/build.py --data data/demo.json --touch data/touch_demo.json --campaigns data/campaigns_demo.json
   python -m http.server -d _site 8000
 """
 import datetime as dt
@@ -70,6 +70,41 @@ def main():
                    "source": "demo", "rows": rows}, f, ensure_ascii=False)
     print(f"Демо-данные: {out} ({len(rows)} строк)")
     demo_touches(today)
+    demo_campaigns(today)
+
+
+CAMPAIGN_SUBJECTS = [
+    ("Новые тарифы на массовые выплаты с 1 числа", .24, .031, .0035),
+    ("CardsPro: карты для рекламных кабинетов теперь с 3D Secure", .21, .026, .004),
+    ("Capitalist на конференции Affiliate World — встречаемся?", .18, .012, .003),
+    ("New: USDT payouts in 60+ countries", .2, .022, .005),
+    ("Дайджест месяца: что нового в Capitalist", .16, .009, .006),
+    ("CardsPro White Label: свой карт-сервис за 2 недели", .19, .018, .0045),
+    ("Важно: обновление правил верификации", .33, .041, .002),
+    ("Monthly digest: what's new in Capitalist", .14, .008, .007),
+]
+
+
+def demo_campaigns(today):
+    """Выдуманные массовые рассылки (data/campaigns_demo.json)."""
+    rows = []
+    for i in range(34):
+        subj, or_, ctr, uns = CAMPAIGN_SUBJECTS[i % len(CAMPAIGN_SUBJECTS)]
+        day = today - dt.timedelta(days=4 + i * 5 + random.randint(0, 2))
+        sent = random.choice([2200, 3400, 5100, 8600, 12000]) if i % 9 else 25
+        deliv = int(sent * random.uniform(.95, .99))
+        k = random.uniform(.75, 1.25)
+        uo, uc = int(deliv * or_ * k), int(deliv * ctr * k)
+        rows.append({"id": str(9000 + i), "dt": f"{day.isoformat()} {random.randint(9, 17):02d}:{random.choice(['00', '30'])}",
+                     "name": f"Рассылка {day.strftime('%d.%m')}", "subject": subj,
+                     "sent": sent, "delivered": deliv, "bounced": sent - deliv, "opens": int(uo * 1.5), "u_opens": uo,
+                     "clicks": int(uc * 1.3), "u_clicks": uc, "unsubs": int(deliv * uns * random.uniform(.5, 1.8))})
+    rows.sort(key=lambda r: r["dt"])
+    out = ROOT / "data" / "campaigns_demo.json"
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump({"generated_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+                   "since": rows[0]["dt"][:10], "rows": rows}, f, ensure_ascii=False)
+    print(f"Демо-рассылки: {out} ({len(rows)} выпусков)")
 
 
 # Цели демо-цепочек (как в config.json) -> какие события генерировать.

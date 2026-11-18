@@ -11,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 DATA_FILE = ROOT / "data" / "daily.json"
 ALERTS_FILE = ROOT / "data" / "alerts.json"
+CAMPAIGNS_FILE = ROOT / "data" / "campaigns.json"
 CONFIG_FILE = ROOT / "config.json"
 
 METRICS = ["sent", "delivered", "bounced", "opens", "u_opens", "clicks", "u_clicks", "unsubs"]

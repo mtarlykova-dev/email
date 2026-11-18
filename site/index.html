@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Триггерные рассылки</title>
+<title>Email-рассылки</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -214,13 +214,30 @@ body.locked .wrap > :not(header):not(#lock) { display: none; }
 td.tw { white-space: normal; min-width: 180px; text-align: left; }
 #conv-goals th { text-align: left; }
 td.muted, span.muted { color: var(--ink-3); }
+/* Вкладки */
+.tabs { display: flex; gap: 24px; margin-top: 20px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tabs button { border: 0; background: none; font: inherit; font-size: 15px; color: var(--ink-2); padding: 10px 0; margin-bottom: -1px; border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; }
+.tabs button[aria-selected="true"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--ink); }
+.tabs + .filters { margin-top: 0; border-top: 0; }
+/* Массовые рассылки */
+.kpis.six { grid-template-columns: repeat(6, 1fr); }
+th.sort { cursor: pointer; user-select: none; }
+th.sort:hover { color: var(--ink); }
+th.sort[aria-sort]::after { content: " ↓"; color: var(--ink-3); }
+th.sort[aria-sort="ascending"]::after { content: " ↑"; }
+td.camp { white-space: normal; text-align: left; min-width: 240px; max-width: 420px; }
+td.camp b { font-weight: 500; display: block; line-height: 1.35; }
+td.camp span, td .when { font-size: 12px; color: var(--ink-3); }
+td.warn { color: var(--bad); }
+#m-table th:nth-child(-n+4), #m-table td:nth-child(-n+4) { text-align: left; }
+.mnote { margin-top: 8px; font-size: 12px; color: var(--ink-3); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
 <body class="locked">
 <div class="wrap">
   <header class="top">
-    <h1>Триггерные рассылки <span>Capitalist и CardsPro</span></h1>
+    <h1>Email-рассылки <span>Capitalist и CardsPro</span></h1>
     <div class="stamp" id="stamp">Загрузка данных…</div>
   </header>
 
@@ -236,13 +253,19 @@ td.muted, span.muted { color: var(--ink-3); }
     </form>
   </section>
 
+  <nav class="tabs" role="tablist" aria-label="Тип рассылок">
+    <button type="button" role="tab" id="tab-btn-trig" aria-controls="tab-trig" data-tab="trig">Триггерные цепочки</button>
+    <button type="button" role="tab" id="tab-btn-mass" aria-controls="tab-mass" data-tab="mass">Массовые рассылки</button>
+  </nav>
+
   <div class="filters" role="group" aria-label="Фильтры">
     <div class="fgroup">Продукт <div class="seg" data-f="product"></div></div>
     <div class="fgroup">Язык <div class="seg" data-f="lang"></div></div>
     <div class="fgroup">Период <div class="seg" data-f="period"></div></div>
-    <div class="fgroup"><label for="sc-select">Сценарий</label> <select id="sc-select"></select></div>
+    <div class="fgroup" id="fg-sc"><label for="sc-select">Сценарий</label> <select id="sc-select"></select></div>
   </div>
 
+  <div id="tab-trig" role="tabpanel" aria-labelledby="tab-btn-trig">
   <div id="alerts"></div>
   <div class="kpis" id="kpis"></div>
 
@@ -304,11 +327,42 @@ td.muted, span.muted { color: var(--ink-3); }
     <p class="sub">Сравнение за выбранный период по всем сценариям продукта.</p>
     <div class="tbl-wrap" id="matrix"></div>
   </section>
+  </div>
+
+  <div id="tab-mass" role="tabpanel" aria-labelledby="tab-btn-mass" hidden>
+    <div class="kpis" id="m-kpis"></div>
+    <p class="mnote" id="m-note"></p>
+
+    <section>
+      <div class="chart-head">
+        <div>
+          <h2>Рассылки по датам</h2>
+          <p class="sub" id="m-chart-sub">Каждый столбец — одна рассылка.</p>
+        </div>
+        <div class="seg" data-f="mmetric"></div>
+      </div>
+      <div class="legend" id="m-legend"></div>
+      <div class="chart-box" id="m-chart"><div class="tip" id="m-tip"></div></div>
+    </section>
+
+    <section>
+      <h2>Все рассылки за период</h2>
+      <p class="sub">Метрики считаются так же, как у триггеров: от доставленных, открытия и клики уникальные. Нажмите на заголовок колонки, чтобы отсортировать. Красным — отписки или ошибки выше порога для массовых рассылок (<span id="m-thr"></span>).</p>
+      <div class="tbl-wrap" id="m-table"></div>
+    </section>
+
+    <section>
+      <h2>Массовые и триггерные</h2>
+      <p class="sub">За тот же период и с теми же фильтрами продукта и языка. Триггеры обычно выше по CTR: письмо приходит в ответ на действие человека.</p>
+      <div class="tbl-wrap" id="m-compare"></div>
+    </section>
+  </div>
 
   <div class="foot">
     <p>OR — уникальные открытия / доставлено. CTR — уникальные клики / доставлено. CTOR — уникальные клики / уникальные открытия. Отписки — от доставленных, ошибки — от отправленных.</p>
     <p>Открытия и клики за последние 2–3 дня ещё набираются, поэтому последняя неделя обычно ниже реальных значений.</p>
     <p><button class="logout" id="logout" type="button" hidden>Выйти и забыть пароль на этом устройстве</button></p>
+    <p>Массовые рассылки — выпуски Sendsay, отправленные не из сценария. Их открытия и клики пересчитываются за всё время при каждом обновлении.</p>
     <p>Данные обновляются автоматически из Sendsay через GitHub Actions. Только агрегаты по письмам, без адресов.</p>
   </div>
 </div>
@@ -325,7 +379,8 @@ td.muted, span.muted { color: var(--ink-3); }
     ctor: { label: "CTOR", fmt: v => fmtPct(v) },
     unsub:{ label: "Отписки", fmt: v => fmtPct(v, 2) },
   };
-  const state = { product: "all", lang: "all", period: "30", scenario: "all", metric: "ctr" };
+  const state = { product: "all", lang: "all", period: "30", scenario: "all", metric: "ctr",
+                  tab: location.hash === "#mass" ? "mass" : "trig", mmetric: "ctr", msort: ["d", -1] };
   let R = null, colorOf = {};
 
   const nf = new Intl.NumberFormat("ru-RU");
@@ -382,6 +437,7 @@ td.muted, span.muted { color: var(--ink-3); }
     seg("lang", [["all", "Все"], ["ru", "ru"], ["en", "en"]]);
     seg("period", [["7", "7 дней"], ["30", "30 дней"], ["90", "90 дней"], ["all", "Всё время"]]);
     seg("metric", Object.entries(METRICS).map(([k, m]) => [k, m.label]));
+    seg("mmetric", Object.entries(MMETRICS).map(([k, m]) => [k, m.label]));
     const sel = document.getElementById("sc-select");
     sel.innerHTML = `<option value="all">Все сценарии</option>` +
       scenarioOrder().map(s => `<option value="${esc(s)}">${esc(R.scenarios[s].name)}</option>`).join("");
@@ -804,7 +860,178 @@ td.muted, span.muted { color: var(--ink-3); }
     box.innerHTML = html || `<p class="empty">Под выбранный фильтр цепочек нет.</p>`;
   }
 
-  function render() { renderAlerts(); renderKpis(); renderChains(); renderConvGoals(); renderConvResult(); renderTrend(); renderMatrix(); }
+  // ---------- Массовые рассылки ----------
+  const MMETRICS = {
+    sent:  { label: "Получатели", fmt: v => fmtInt(v) },
+    or:    { label: "OR",   fmt: v => fmtPct(v) },
+    ctr:   { label: "CTR",  fmt: v => fmtPct(v, 2) },
+    ctor:  { label: "CTOR", fmt: v => fmtPct(v) },
+    unsub: { label: "Отписки", fmt: v => fmtPct(v, 2) },
+  };
+  const PROD_COLOR = { Capitalist: "--s1", CardsPro: "--s2" };
+  const prodColor = p => PROD_COLOR[p] || "--s7";
+  const MC = () => R.campaigns || { rows: [] };
+  const mFilter = r => (state.product === "all" || r.product === state.product) && (state.lang === "all" || r.lang === state.lang);
+  function mBounds() {
+    // Рассылку видно в день отправки, поэтому период заканчивается сегодня (у триггеров — вчера).
+    const end = R.today, rows = MC().rows;
+    if (state.period === "all") return [rows.length ? rows[0].d : end, end, null];
+    const n = +state.period, start = addDays(end, -(n - 1));
+    return [start, end, [addDays(start, -n), addDays(start, -1)]];
+  }
+  const fmtDT = s => new Date(s.replace(" ", "T") + ":00+03:00").toLocaleString("ru-RU", Object.assign({ day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Moscow" },
+    s.slice(0, 4) === R.today.slice(0, 4) ? {} : { year: "numeric" }));
+
+  function renderMass() {
+    const C = MC(), [s, e, prev] = mBounds();
+    const all = C.rows.filter(mFilter);
+    const rows = all.filter(r => r.d >= s && r.d <= e);
+    const ids = ["m-kpis", "m-legend", "m-table", "m-compare"];
+    const chart = $("m-chart"); chart.querySelectorAll("svg, .empty").forEach(n => n.remove());
+    $("m-thr").textContent = `отписки > ${fmtPct(C.thresholds.unsub, 1)}, ошибки > ${fmtPct(C.thresholds.bounce, 0)}`;
+    if (!C.rows.length) {
+      ids.forEach(id => $(id).innerHTML = "");
+      $("m-note").textContent = "";
+      chart.insertAdjacentHTML("afterbegin", `<p class="empty">Данных о массовых рассылках пока нет. Они появятся после следующего обновления отчёта (GitHub Actions → «Обновить отчёт»).</p>`);
+      return;
+    }
+
+    // KPI
+    const cur = rates(sum(rows)), old = prev ? rates(sum(all.filter(r => r.d >= prev[0] && r.d <= prev[1]))) : null;
+    const oldN = prev ? all.filter(r => r.d >= prev[0] && r.d <= prev[1]).length : null;
+    const items = [
+      ["Рассылок", rows.length, v => fmtInt(v), oldN, "n"],
+      ["Получателей", cur.sent, v => fmtInt(v), old && old.sent, "n"],
+      ["OR", cur.or, v => fmtPct(v), old && old.or, 1],
+      ["CTR", cur.ctr, v => fmtPct(v, 2), old && old.ctr, 1],
+      ["CTOR", cur.ctor, v => fmtPct(v), old && old.ctor, 1],
+      ["Отписки", cur.unsub, v => fmtPct(v, 2), old && old.unsub, -1],
+    ];
+    $("m-kpis").innerHTML = items.map(([l, v, f, o, good]) => {
+      let d = `<div class="d">${prev ? "нет рассылок для сравнения" : `${fmtDate(s)} — ${fmtDate(e)}`}</div>`;
+      if (prev && o != null && v != null && (good !== "n" || o)) {
+        const diff = good === "n" ? v / o - 1 : v - o;
+        const dp = l === "OR" || l === "CTOR" ? 1 : 2, zero = good !== "n" && Math.abs(diff * 100) < 0.5 * Math.pow(10, -dp);
+        const txt = good === "n" ? `${diff >= 0 ? "+" : "−"}${Math.abs(diff * 100).toFixed(0)}%`
+          : `${zero ? "±" : diff >= 0 ? "+" : "−"}${Math.abs(diff * 100).toFixed(l === "OR" || l === "CTOR" ? 1 : 2).replace(".", ",")} п.п.`;
+        const cls = good === "n" || zero ? "" : (diff * good > 0 ? "up" : "down");
+        d = `<div class="d ${cls}">${txt} к прошлым ${state.period} дн.</div>`;
+      }
+      return `<div class="kpi"><div class="l">${l}</div><div class="v">${f(v)}</div>${d}</div>`;
+    }).join("");
+    const fresh = rows.filter(r => r.d > addDays(R.today, -3)).length;
+    $("m-note").textContent = (fresh ? `${fresh} ${fresh === 1 ? "рассылка отправлена" : "рассылки отправлены"} за последние 3 дня — открытия и клики по ним ещё набираются. ` : "") +
+      (C.hidden ? `Выпуски меньше ${C.min_sent} получателей (тесты, отправки на себя) не показываются: таких ${C.hidden}.` : "");
+
+    // График: столбец на рассылку
+    const m = state.mmetric;
+    const prods = [...new Set(rows.map(r => r.product))].sort();
+    $("m-legend").innerHTML = prods.map(p => `<span><i style="background:var(${prodColor(p)})"></i>${esc(p)}</span>`).join("") +
+      (m !== "sent" && rows.length ? `<span><i style="background:var(--ink-3);height:2px"></i>Среднее за период</span>` : "");
+    $("m-chart-sub").textContent = `${MMETRICS[m].label}: каждый столбец — одна рассылка, по дате отправки.`;
+    const tip = $("m-tip");
+    if (!rows.length) {
+      chart.insertAdjacentHTML("afterbegin", `<p class="empty">За выбранный период массовых рассылок нет. Выберите период длиннее.</p>`);
+    } else {
+      const W = Math.max(320, chart.clientWidth), H = 280, ml = 52, mr = 16, mt = 12, mb = 30;
+      const t0 = Date.parse(s + "T00:00:00Z"), t1 = Date.parse(e + "T23:59:59Z");
+      const tx = r => Date.parse(r.dt.replace(" ", "T") + ":00Z");
+      const pw = W - ml - mr, x = r => ml + pw * (tx(r) - t0) / (t1 - t0);
+      const vals = rows.map(r => rates(r)[m]);
+      let ymax = Math.max(...vals.filter(v => v != null), m === "sent" ? 1 : 0.001);
+      const ticks = niceTicks(ymax); ymax = ticks[ticks.length - 1];
+      const y = v => mt + (H - mt - mb) * (1 - v / ymax);
+      const bw = Math.max(3, Math.min(16, pw / rows.length * 0.6));
+      const fmtTick = v => m === "sent" ? (v >= 1000 ? (v / 1000).toFixed(v % 1000 ? 1 : 0).replace(".", ",") + "K" : String(v)) : (v * 100).toFixed(ymax < 0.05 ? 1 : 0).replace(".", ",") + "%";
+      const grid = css("--line"), ink3 = css("--ink-3");
+      let svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(MMETRICS[m].label)} по рассылкам">`;
+      for (const t of ticks) svg += `<line x1="${ml}" x2="${W - mr}" y1="${y(t)}" y2="${y(t)}" stroke="${grid}"/><text x="${ml - 8}" y="${y(t) + 4}" text-anchor="end" font-size="11" fill="${ink3}">${fmtTick(t)}</text>`;
+      const nl = W < 600 ? 3 : 6;
+      for (let i = 0; i <= nl; i++) {
+        const t = t0 + (t1 - t0) * i / nl, lx = ml + pw * i / nl;
+        svg += `<text x="${lx}" y="${H - 8}" text-anchor="${i === 0 ? "start" : i === nl ? "end" : "middle"}" font-size="11" fill="${ink3}">${fmtDate(new Date(t).toISOString().slice(0, 10))}</text>`;
+      }
+      rows.forEach((r, i) => {
+        const v = vals[i]; if (v == null) return;
+        const cx = x(r), top = y(v);
+        svg += `<rect data-i="${i}" x="${(cx - bw / 2).toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1, H - mb - top).toFixed(1)}" rx="${Math.min(3, bw / 2)}" fill="var(${prodColor(r.product)})"/>`;
+      });
+      if (m !== "sent") { const av = cur[m]; if (av != null) svg += `<line x1="${ml}" x2="${W - mr}" y1="${y(av)}" y2="${y(av)}" stroke="${ink3}" stroke-dasharray="4 4"/>`; }
+      svg += `<rect x="${ml}" y="${mt}" width="${pw}" height="${H - mt - mb}" fill="transparent" id="m-hit"/></svg>`;
+      chart.insertAdjacentHTML("afterbegin", svg);
+      const hit = chart.querySelector("#m-hit"), bars = [...chart.querySelectorAll("rect[data-i]")];
+      hit.addEventListener("pointermove", ev => {
+        const px = ev.clientX - hit.getBoundingClientRect().left + ml;
+        let bi = 0, bd = Infinity; rows.forEach((r, i) => { const dd = Math.abs(x(r) - px); if (dd < bd) { bd = dd; bi = i; } });
+        const r = rows[bi], rr = rates(r);
+        bars.forEach(b => b.style.opacity = +b.dataset.i === bi ? 1 : .45);
+        tip.innerHTML = `<div class="t">${esc(r.subject || r.name)}</div><div class="note" style="margin:0 0 4px">${fmtDT(r.dt)} · ${esc(r.product)}</div>` +
+          [["Получатели", fmtInt(r.sent)], ["OR", fmtPct(rr.or)], ["CTR", fmtPct(rr.ctr, 2)], ["CTOR", fmtPct(rr.ctor)], ["Отписки", fmtPct(rr.unsub, 2)]]
+            .map(([a, b]) => `<div class="r"><span>${a}</span><b>${b}</b></div>`).join("");
+        tip.style.display = "block"; tip.style.maxWidth = "260px";
+        const tw = tip.offsetWidth, cx = x(r);
+        tip.style.left = (cx + 14 + tw > W ? Math.max(0, cx - tw - 14) : cx + 14) + "px"; tip.style.top = mt + "px";
+      });
+      hit.addEventListener("pointerleave", () => { tip.style.display = "none"; bars.forEach(b => b.style.opacity = 1); });
+    }
+
+    // Таблица
+    const thr = C.thresholds;
+    const cols = [
+      ["d", "Дата", r => r.dt], ["subject", "Тема и выпуск", r => (r.subject || r.name).toLowerCase()], ["product", "Продукт", r => r.product], ["lang", "Язык", r => r.lang],
+      ["sent", "Отправлено", r => r.sent], ["deliv", "Доставлено", r => rates(r).deliv], ["or", "OR", r => rates(r).or],
+      ["ctr", "CTR", r => rates(r).ctr], ["ctor", "CTOR", r => rates(r).ctor], ["unsub", "Отписки", r => rates(r).unsub], ["bounce", "Ошибки", r => rates(r).bounce],
+    ];
+    const [sk, sd] = state.msort, getter = cols.find(c => c[0] === sk)[2];
+    const sorted = [...rows].sort((a, b) => { const va = getter(a), vb = getter(b); return (va == null) - (vb == null) || (va < vb ? -1 : va > vb ? 1 : 0) * sd; });
+    const mxCtr = Math.max(...rows.map(r => rates(r).ctr || 0), 1e-9);
+    $("m-table").innerHTML = !rows.length ? "" : `<table><thead><tr>${cols.map(([k, l]) => `<th class="sort" data-k="${k}"${k === sk ? ` aria-sort="${sd > 0 ? "ascending" : "descending"}"` : ""}>${l}</th>`).join("")}</tr></thead><tbody>` +
+      sorted.map(r => {
+        const rr = rates(r), fresh = r.d > addDays(R.today, -3);
+        const sub = r.name && r.name !== r.subject ? `<span>${esc(r.name)}</span>` : "";
+        return `<tr><td>${fmtDT(r.dt)}${fresh ? `<div class="when">набирается</div>` : ""}</td><td class="camp"><b>${esc(r.subject || r.name)}</b>${sub}</td><td>${esc(r.product)}</td><td>${esc(r.lang)}</td>` +
+          `<td>${fmtInt(r.sent)}</td><td>${fmtPct(rr.deliv)}</td><td>${fmtPct(rr.or)}</td>` +
+          `<td><span class="cell">${fmtPct(rr.ctr, 2)}<span class="mini"><b style="width:${((rr.ctr || 0) / mxCtr * 100).toFixed(1)}%"></b></span></span></td>` +
+          `<td>${fmtPct(rr.ctor)}</td><td class="${rr.unsub > thr.unsub ? "warn" : ""}">${fmtPct(rr.unsub, 2)}</td><td class="${rr.bounce > thr.bounce ? "warn" : ""}">${fmtPct(rr.bounce)}</td></tr>`;
+      }).join("") + `</tbody></table>`;
+    $("m-table").querySelectorAll("th.sort").forEach(th => th.onclick = () => {
+      const k = th.dataset.k;
+      state.msort = [k, state.msort[0] === k ? -state.msort[1] : (k === "subject" || k === "product" || k === "lang" ? 1 : -1)];
+      renderMass();
+    });
+
+    // Сравнение с триггерами
+    const trig = rates(sum(R.rows.filter(r => r.d >= s && r.d <= e && (state.product === "all" || R.scenarios[r.seq].product === state.product) && (state.lang === "all" || r.lang === state.lang))));
+    const ccols = [["or", "OR", 1], ["ctr", "CTR", 2], ["ctor", "CTOR", 1], ["unsub", "Отписки", 2], ["bounce", "Ошибки", 1]];
+    const line = (l, r, cls = "") => `<tr class="${cls}"><td>${l}</td><td>${r.sent != null ? fmtInt(r.sent) : "—"}</td>${ccols.map(([k, , d]) => `<td>${r[k] != null ? fmtPct(r[k], d) : "—"}</td>`).join("")}</tr>`;
+    const B = R.benchmarks && R.benchmarks.industry;
+    $("m-compare").innerHTML = `<table><thead><tr><th></th><th>Отправлено</th>${ccols.map(c => `<th>${c[1]}</th>`).join("")}</tr></thead><tbody>` +
+      line("Массовые рассылки", cur, "grp") + line("Триггерные цепочки", trig) +
+      (B ? line(`Ориентир: ${esc(B.label)}`, Object.assign({ sent: null }, B), "bmrow") : "") + `</tbody></table>` +
+      (B ? `<p class="sub" style="margin-top:8px">Ориентир: <a href="${esc(R.benchmarks.source_url)}" target="_blank" rel="noopener">${esc(R.benchmarks.source)}</a>.</p>` : "");
+  }
+
+  // ---------- Вкладки ----------
+  function setTab(t) {
+    state.tab = t;
+    document.querySelectorAll(".tabs [role=tab]").forEach(b => { b.setAttribute("aria-selected", b.dataset.tab === t); b.tabIndex = b.dataset.tab === t ? 0 : -1; });
+    $("tab-trig").hidden = t !== "trig"; $("tab-mass").hidden = t !== "mass"; $("fg-sc").hidden = t !== "trig";
+    try { history.replaceState(null, "", t === "mass" ? "#mass" : location.pathname + location.search); } catch (_) {}
+    render();
+  }
+  function setupTabs() {
+    const tl = document.querySelector(".tabs");
+    tl.onclick = e => { const b = e.target.closest("[role=tab]"); if (b) setTab(b.dataset.tab); };
+    tl.onkeydown = e => {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+      const t = state.tab === "trig" ? "mass" : "trig"; setTab(t); $("tab-btn-" + t).focus();
+    };
+  }
+
+  function render() {
+    if (state.tab === "mass") return renderMass();
+    renderAlerts(); renderKpis(); renderChains(); renderConvGoals(); renderConvResult(); renderTrend(); renderMatrix();
+  }
 
   const PW_KEY = "capitalist-email-report-pw";
   const $ = id => document.getElementById(id);
@@ -880,8 +1107,9 @@ td.muted, span.muted { color: var(--ink-3); }
     stamp.textContent = `Обновлено ${gen} МСК` + (R.source === "demo" ? " · демо-данные" : "");
     setupFilters();
     setupConv();
-    render();
-    let t; addEventListener("resize", () => { clearTimeout(t); t = setTimeout(renderTrend, 150); });
+    setupTabs();
+    setTab(state.tab);
+    let t; addEventListener("resize", () => { clearTimeout(t); t = setTimeout(() => state.tab === "mass" ? renderMass() : renderTrend(), 150); });
   }
 })();
 </script>
