@@ -15,7 +15,7 @@ import sys
 from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(__file__))
-from common import ALERTS_FILE, DATA_FILE, METRICS, ROOT, detect_lang, load_config  # noqa: E402
+from common import ALERTS_FILE, CAMPAIGNS_FILE, DATA_FILE, METRICS, ROOT, detect_lang, load_config  # noqa: E402
 
 ENC_ITER = 200_000
 MSK = dt.timezone(dt.timedelta(hours=3))
@@ -311,6 +311,31 @@ def build_conversions(cfg, rows, meta, merges, touch, password):
     return out
 
 
+def build_campaigns(cfg, path):
+    """Массовые рассылки: по строке на выпуск + продукт и язык."""
+    c = cfg.get("campaigns", {})
+    out = {"rows": [], "generated_at": None, "since": None, "hidden": 0,
+           "min_sent": int(c.get("min_sent", 0)),
+           "thresholds": c.get("thresholds") or {"unsub": 0.008, "bounce": 0.03}}
+    if not path.exists():
+        return out
+    with open(path, encoding="utf-8") as f:
+        payload = json.load(f)
+    out["generated_at"], out["since"] = payload.get("generated_at"), payload.get("since")
+    rules = [(p, [m.lower() for m in ms]) for p, ms in (c.get("products") or {}).items()]
+    default = c.get("default_product") or "Capitalist"
+    for r in payload.get("rows", []):
+        if r["sent"] < out["min_sent"]:
+            out["hidden"] += 1
+            continue
+        # Язык — по теме: название выпуска в Sendsay часто русское и у английских рассылок.
+        hay = f"{r['name']} {r['subject']}".lower()
+        r = dict(r, product=next((p for p, ms in rules if any(m in hay for m in ms)), default),
+                 lang=detect_lang(r["subject"] or r["name"]), d=r["dt"][:10])
+        out["rows"].append(r)
+    return out
+
+
 def write_summary(alerts, meta, rows, generated_at):
     path = os.environ.get("GITHUB_STEP_SUMMARY")
     if not path:
@@ -333,6 +358,9 @@ def main():
     if touch_path.exists():
         with open(touch_path, encoding="utf-8") as f:
             touch = json.load(f)
+    camp_path = CAMPAIGNS_FILE
+    if "--campaigns" in sys.argv:
+        camp_path = ROOT / sys.argv[sys.argv.index("--campaigns") + 1]
     cfg = load_config()
     if data_path.exists():
         with open(data_path, encoding="utf-8") as f:
@@ -384,6 +412,7 @@ def main():
         "display": {"min_delivered": cfg.get("display", {}).get("min_delivered", 50),
                     "rate_window_days": cfg["alerts"].get("rate_window_days", 14)},
         "rows": rows,
+        "campaigns": build_campaigns(cfg, camp_path),
         "conv": build_conversions(cfg, rows, meta, merges, touch, os.environ.get("REPORT_PASSWORD", "")),
     }
     raw = json.dumps(report, ensure_ascii=False, separators=(",", ":")).encode("utf-8")

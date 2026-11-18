@@ -62,6 +62,14 @@ jobs:
           FETCH_DAYS: ${{ github.event.inputs.fetch_days }}
         run: python scripts/fetch_sendsay.py
 
+      - name: Массовые рассылки (выпуски без сценария)
+        if: env.HAS_SENDSAY == 'true'
+        continue-on-error: true   # если упадёт, триггерный отчёт всё равно опубликуется
+        env:
+          SENDSAY_LOGIN: ${{ secrets.SENDSAY_LOGIN }}
+          SENDSAY_APIKEY: ${{ secrets.SENDSAY_APIKEY }}
+        run: python scripts/fetch_campaigns.py
+
       - name: Контакты по людям для блока «Конверсии» (в репозиторий не сохраняются)
         if: env.HAS_SENDSAY == 'true'
         env:
