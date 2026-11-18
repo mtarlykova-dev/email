@@ -362,7 +362,7 @@ td.warn { color: var(--bad); }
     <p>OR — уникальные открытия / доставлено. CTR — уникальные клики / доставлено. CTOR — уникальные клики / уникальные открытия. Отписки — от доставленных.</p>
     <p>Открытия и клики за последние 2–3 дня ещё набираются, поэтому последняя неделя обычно ниже реальных значений.</p>
     <p><button class="logout" id="logout" type="button" hidden>Выйти и забыть пароль на этом устройстве</button></p>
-    <p>Массовые рассылки — выпуски Sendsay, отправленные не из сценария. Их открытия и клики пересчитываются за всё время при каждом обновлении.</p>
+    <p>Массовые рассылки — выпуски Sendsay, отправленные не из сценария. Их открытия и клики пересчитываются за всё время при каждом обновлении. Рассылки из других сервисов (например, amo) внесены вручную и помечены в таблице.</p>
     <p>Данные обновляются автоматически из Sendsay через GitHub Actions. Только агрегаты по письмам, без адресов.</p>
   </div>
 </div>
@@ -964,7 +964,7 @@ td.warn { color: var(--bad); }
         let bi = 0, bd = Infinity; rows.forEach((r, i) => { const dd = Math.abs(x(r) - px); if (dd < bd) { bd = dd; bi = i; } });
         const r = rows[bi], rr = rates(r);
         bars.forEach(b => b.style.opacity = +b.dataset.i === bi ? 1 : .45);
-        tip.innerHTML = `<div class="t">${esc(r.subject || r.name)}</div><div class="note" style="margin:0 0 4px">${fmtDT(r.dt)} · ${esc(r.product)}</div>` +
+        tip.innerHTML = `<div class="t">${esc(r.subject || r.name)}</div><div class="note" style="margin:0 0 4px">${fmtDT(r.dt)} · ${esc(r.product)}${r.source ? ` · ${esc(r.source)}, вручную` : ""}</div>` +
           [["Получатели", fmtInt(r.sent)], ["OR", fmtPct(rr.or)], ["CTR", fmtPct(rr.ctr, 2)], ["CTOR", fmtPct(rr.ctor)], ["Отписки", fmtPct(rr.unsub, 2)]]
             .map(([a, b]) => `<div class="r"><span>${a}</span><b>${b}</b></div>`).join("");
         tip.style.display = "block"; tip.style.maxWidth = "260px";
@@ -987,7 +987,8 @@ td.warn { color: var(--bad); }
     $("m-table").innerHTML = !rows.length ? "" : `<table><thead><tr>${cols.map(([k, l]) => `<th class="sort" data-k="${k}"${k === sk ? ` aria-sort="${sd > 0 ? "ascending" : "descending"}"` : ""}>${l}</th>`).join("")}</tr></thead><tbody>` +
       sorted.map(r => {
         const rr = rates(r), fresh = r.d > addDays(R.today, -3);
-        const sub = r.name && r.name !== r.subject ? `<span>${esc(r.name)}</span>` : "";
+        const sub = r.source ? `<span>${esc(r.source)} · внесено вручную</span>`
+          : r.name && r.name !== r.subject ? `<span>${esc(r.name)}</span>` : "";
         return `<tr><td>${fmtDT(r.dt)}${fresh ? `<div class="when">набирается</div>` : ""}</td><td class="camp"><b>${esc(r.subject || r.name)}</b>${sub}</td><td>${esc(r.product)}</td><td>${esc(r.lang)}</td>` +
           `<td>${fmtInt(r.sent)}</td><td>${fmtPct(rr.deliv)}</td><td>${fmtPct(rr.or)}</td>` +
           `<td><span class="cell">${fmtPct(rr.ctr, 2)}<span class="mini"><b style="width:${((rr.ctr || 0) / mxCtr * 100).toFixed(1)}%"></b></span></span></td>` +

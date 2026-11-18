@@ -80,6 +80,7 @@ jobs:
       - name: Сборка страницы и алертов (данные шифруются паролем)
         env:
           REPORT_PASSWORD: ${{ secrets.REPORT_PASSWORD }}
+          MANUAL_CAMPAIGNS: ${{ secrets.MANUAL_CAMPAIGNS }}
           REQUIRE_ENCRYPTION: "1"
         run: |
           pip install -q cryptography
