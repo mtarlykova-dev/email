@@ -987,7 +987,7 @@ td.warn { color: var(--bad); }
     $("m-table").innerHTML = !rows.length ? "" : `<table><thead><tr>${cols.map(([k, l]) => `<th class="sort" data-k="${k}"${k === sk ? ` aria-sort="${sd > 0 ? "ascending" : "descending"}"` : ""}>${l}</th>`).join("")}</tr></thead><tbody>` +
       sorted.map(r => {
         const rr = rates(r), fresh = r.d > addDays(R.today, -3);
-        const sub = r.source ? `<span>${esc(r.source)} · внесено вручную</span>`
+        const sub = r.source ? `<span>${r.name ? `${esc(r.name)} · ${esc(r.source)}` : `${esc(r.source)} · внесено вручную`}</span>`
           : r.name && r.name !== r.subject ? `<span>${esc(r.name)}</span>` : "";
         return `<tr><td>${fmtDT(r.dt)}${fresh ? `<div class="when">набирается</div>` : ""}</td><td class="camp"><b>${esc(r.subject || r.name)}</b>${sub}</td><td>${esc(r.product)}</td><td>${esc(r.lang)}</td>` +
           `<td>${fmtInt(r.sent)}</td><td>${fmtPct(rr.deliv)}</td><td>${fmtPct(rr.or)}</td>` +
