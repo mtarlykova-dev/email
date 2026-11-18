@@ -317,23 +317,60 @@ def build_campaigns(cfg, path):
     out = {"rows": [], "generated_at": None, "since": None, "hidden": 0,
            "min_sent": int(c.get("min_sent", 0)),
            "thresholds": c.get("thresholds") or {"unsub": 0.008, "bounce": 0.03}}
-    if not path.exists():
-        return out
-    with open(path, encoding="utf-8") as f:
-        payload = json.load(f)
+    payload = {"rows": []}
+    if path.exists():
+        with open(path, encoding="utf-8") as f:
+            payload = json.load(f)
     out["generated_at"], out["since"] = payload.get("generated_at"), payload.get("since")
+    manual = load_manual_campaigns()
     rules = [(p, [m.lower() for m in ms]) for p, ms in (c.get("products") or {}).items()]
     default = c.get("default_product") or "Capitalist"
-    for r in payload.get("rows", []):
-        if r["sent"] < out["min_sent"]:
+    for r in payload.get("rows", []) + manual:
+        if r["sent"] < out["min_sent"] and not r.get("source"):
             out["hidden"] += 1
             continue
         # Язык — по теме: название выпуска в Sendsay часто русское и у английских рассылок.
         hay = f"{r['name']} {r['subject']}".lower()
-        r = dict(r, product=next((p for p, ms in rules if any(m in hay for m in ms)), default),
+        r = dict(r, product=r.get("product") or next((p for p, ms in rules if any(m in hay for m in ms)), default),
                  lang=detect_lang(r["subject"] or r["name"]), d=r["dt"][:10])
         out["rows"].append(r)
+    out["rows"].sort(key=lambda r: (r["dt"], r["id"]))
     return out
+
+
+def load_manual_campaigns():
+    """Рассылки, отправленные не через Sendsay (например, из amo), — цифры вносятся вручную.
+    Источник: секрет MANUAL_CAMPAIGNS (JSON-список) или локальный data/campaigns_manual.json.
+    В публичный репозиторий не попадают, на сайт — только в зашифрованных данных."""
+    raw = os.environ.get("MANUAL_CAMPAIGNS", "").strip()
+    local = ROOT / "data" / "campaigns_manual.json"
+    if not raw and local.exists():
+        raw = local.read_text(encoding="utf-8")
+    if not raw:
+        return []
+    try:
+        items = json.loads(raw)
+    except json.JSONDecodeError as e:
+        print(f"::warning::MANUAL_CAMPAIGNS: не JSON ({e}) — ручные рассылки пропущены")
+        return []
+    rows = []
+    for i, m in enumerate(items):
+        dt_ = str(m.get("dt", "")).strip()[:16]
+        if len(dt_) < 16:
+            print(f"::warning::MANUAL_CAMPAIGNS: у записи {i + 1} нет даты «ГГГГ-ММ-ДД ЧЧ:ММ» — пропущена")
+            continue
+        row = {"id": str(m.get("id") or f"manual-{i + 1}"), "dt": dt_, "name": (m.get("name") or "").strip(),
+               "subject": (m.get("subject") or "").strip(), "source": (m.get("source") or "вручную").strip()}
+        if m.get("product"):
+            row["product"] = m["product"]
+        for k in METRICS:
+            row[k] = int(m.get(k) or 0)
+        # Если сервис отдаёт только уникальные открытия/клики — общие считаем равными им.
+        row["opens"] = row["opens"] or row["u_opens"]
+        row["clicks"] = row["clicks"] or row["u_clicks"]
+        row["bounced"] = row["bounced"] or max(0, row["sent"] - row["delivered"])
+        rows.append(row)
+    return rows
 
 
 def write_summary(alerts, meta, rows, generated_at):

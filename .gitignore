@@ -16,4 +16,5 @@ data/demo_backoffice.csv
 # Массовые рассылки — тоже только агрегаты, но цифры в публичный репозиторий не кладём.
 data/campaigns.json
 data/campaigns_demo.json
+data/campaigns_manual.json
 shots/

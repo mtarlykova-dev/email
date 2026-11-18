@@ -155,6 +155,15 @@ python -m http.server -d _site 8000
 - `products` — продукт по фрагменту названия или темы выпуска (`"CardsPro": ["cardspro", …]`), иначе `default_product`;
 - `thresholds` — когда отписки и ошибки в таблице подсвечиваются красным.
 
+**Рассылки из других сервисов** (например, amo) добавляются вручную через секрет `MANUAL_CAMPAIGNS` — JSON-список, по объекту на рассылку:
+
+```json
+[{"source": "amo", "dt": "2026-10-29 15:55", "subject": "Тема письма", "product": "Capitalist",
+  "sent": 20, "delivered": 20, "u_opens": 4, "u_clicks": 2, "unsubs": 0}]
+```
+
+Время — по Москве. В таблице такие рассылки подписаны «amo · внесено вручную». Цифры в репозиторий не попадают; чтобы добавить новую, обновите секрет целиком (Settings → Secrets and variables → Actions) и перезапустите «Обновить отчёт».
+
 Язык рассылки определяется по теме (кириллица → ru). Если шаг загрузки упадёт, триггерная часть отчёта всё равно обновится.
 
 Локальная проверка: `python scripts/demo_data.py && python scripts/build.py --data data/demo.json --touch data/touch_demo.json --campaigns data/campaigns_demo.json`.
