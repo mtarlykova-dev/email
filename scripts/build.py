@@ -325,7 +325,10 @@ def build_campaigns(cfg, path):
     manual = load_manual_campaigns()
     rules = [(p, [m.lower() for m in ms]) for p, ms in (c.get("products") or {}).items()]
     default = c.get("default_product") or "Capitalist"
+    excl = [(e.get("dt", "")[:16], (e.get("subject") or "").strip().lower()) for e in c.get("exclude", [])]
     for r in payload.get("rows", []) + manual:
+        if not r.get("source") and any(r["dt"][:16] == d and r["subject"].lower().startswith(sub) for d, sub in excl):
+            continue
         if r["sent"] < out["min_sent"] and not r.get("source"):
             out["hidden"] += 1
             continue
