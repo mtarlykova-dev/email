@@ -50,7 +50,7 @@ def call(login, apikey, request, debug=False):
     """POST к API с обработкой REDIRECT (Sendsay может перенаправить на другой сервер)."""
     path = f"/general/api/v100/json/{login}"
     body = dict(request, apikey=apikey)
-    for attempt in range(6):
+    for attempt in range(8):
         req = urllib.request.Request(
             API_HOST + path,
             data=json.dumps(body).encode("utf-8"),
@@ -65,6 +65,13 @@ def call(login, apikey, request, debug=False):
                 time.sleep(5 * (attempt + 1))
                 continue
             raise SendsayError(f"HTTP {e.code}: {e.read()[:500]!r}")
+        except (urllib.error.URLError, TimeoutError) as e:
+            # Сетевой сбой (таймаут соединения) — повторяем с паузой, это не ошибка данных.
+            if attempt < 4:
+                print(f"Sendsay не ответил ({e}), повтор через {15 * (attempt + 1)} с", file=sys.stderr)
+                time.sleep(15 * (attempt + 1))
+                continue
+            raise SendsayError(f"Нет связи с API: {e}")
         if debug:
             preview = json.dumps(data, ensure_ascii=False)[:1500]
             print(f"[debug] {request.get('action')} -> {preview}", file=sys.stderr)
