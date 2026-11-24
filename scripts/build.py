@@ -357,13 +357,13 @@ def build_crm(cfg, rows, merges, touch, amo):
 
     now = dt.datetime.now(MSK).replace(tzinfo=None)
     ev = {}
-    for email, t, sid, _lead in (amo or {}).get("events", []):
-        ev.setdefault(email, []).append((t, str(sid)))
+    for email, t, sid, lead in (amo or {}).get("events", []):
+        ev.setdefault(email, []).append((t, str(sid), lead))
     for v in ev.values():
         v.sort()
 
     by_status = {k: 0 for k, _ in statuses}
-    lags, weeks, conv_total = [], {}, 0
+    lags, weeks, conv_total, deals = [], {}, 0, []
     for email, cl in clicks.items():
         first = dt_(cl[0][0])
         wk = (first - dt.timedelta(days=first.weekday())).date().isoformat()
@@ -371,7 +371,7 @@ def build_crm(cfg, rows, merges, touch, amo):
         w["clickers"] += 1
         if now < first + dt.timedelta(days=win):
             w["open"] += 1  # окно 30 дней ещё не закрылось
-        for t, sid in ev.get(email, []):
+        for t, sid, lead in ev.get(email, []):
             te = dt_(t)
             before = [c for c in cl if dt_(c[0]) < te <= dt_(c[0]) + dt.timedelta(days=win)]
             if before:
@@ -382,6 +382,8 @@ def build_crm(cfg, rows, merges, touch, amo):
                 by_status[sid] = by_status.get(sid, 0) + 1
                 lags.append((te - dt_(c[0])).total_seconds() / 86400)
                 w["conv"] += 1
+                # Номер сделки — чтобы открыть её в amo; адресов в отчёте нет.
+                deals.append({"lead": lead, "letter": letters[c[1]]["label"], "click": c[0], "status": sid, "at": t})
                 break
     # Для сравнения: получили письма, но на сайт не переходили — сколько дошли до этапа за то же окно от первого письма.
     nc_people = nc_conv = 0
@@ -390,7 +392,7 @@ def build_crm(cfg, rows, merges, touch, amo):
             continue
         nc_people += 1
         a = dt_(t0)
-        if any(a < dt_(t) <= a + dt.timedelta(days=win) for t, _ in ev.get(email, [])):
+        if any(a < dt_(t) <= a + dt.timedelta(days=win) for t, _s, _l in ev.get(email, [])):
             nc_conv += 1
     lags.sort()
     out.update({
@@ -402,6 +404,8 @@ def build_crm(cfg, rows, merges, touch, amo):
         "letters": sorted([dict(v, recipients=len(v["recipients"]), clickers=len(v["clickers"])) for v in letters.values()],
                           key=lambda x: (x["lang"], x["step"])),
         "weeks": sorted(weeks.values(), key=lambda x: x["week"]),
+        "deals": sorted(deals, key=lambda d: d["at"], reverse=True),
+        "amo_url": f"https://{(cfg.get('amo') or {}).get('subdomain', '')}.amocrm.ru/leads/detail/",
     })
     return out
 
