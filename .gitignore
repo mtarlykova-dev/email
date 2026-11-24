@@ -12,6 +12,8 @@ data/alerts.json
 data/touch.json
 data/touch_demo.json
 data/demo_backoffice.csv
+data/amo.json
+data/amo_demo.json
 
 # Массовые рассылки — тоже только агрегаты, но цифры в публичный репозиторий не кладём.
 data/campaigns.json

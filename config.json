@@ -203,5 +203,24 @@
         "why": "тестовая отправка"
       }
     ]
+  },
+  "amo": {
+    "_help": "amoCRM: поддомен аккаунта и воронка, из которой берём смены этапов. Токен — секрет AMO_TOKEN.",
+    "subdomain": "projectone",
+    "pipeline_id": 10521326,
+    "pipeline_name": "CRP"
+  },
+  "cardspro_crm": {
+    "_help": "Вкладка «Welcome CardsPro → CRP». Конверсия: человек из цепочки scenario перешёл по ссылке из любого письма на сайт или ЛК (click_dest: site — домены Capitalist/CardsPro; Telegram не считается), и в течение window_days дней после этого его сделка в воронке amo перешла на один из этапов statuses (ID этапа -> название). Сопоставление — по email контакта сделки.",
+    "scenario": "3",
+    "click_dest": [
+      "site"
+    ],
+    "window_days": 30,
+    "statuses": {
+      "84381634": "1st payment",
+      "84327810": "Integration process",
+      "142": "Successfully"
+    }
   }
 }

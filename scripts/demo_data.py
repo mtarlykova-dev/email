@@ -3,7 +3,7 @@
 
 Запуск:
   python scripts/demo_data.py
-  python scripts/build.py --data data/demo.json --touch data/touch_demo.json --campaigns data/campaigns_demo.json
+  python scripts/build.py --data data/demo.json --touch data/touch_demo.json --campaigns data/campaigns_demo.json --amo data/amo_demo.json
   python -m http.server -d _site 8000
 """
 import datetime as dt
@@ -71,6 +71,7 @@ def main():
     print(f"Демо-данные: {out} ({len(rows)} строк)")
     demo_touches(today)
     demo_campaigns(today)
+    demo_amo()
 
 
 CAMPAIGN_SUBJECTS = [
@@ -83,6 +84,33 @@ CAMPAIGN_SUBJECTS = [
     ("Важно: обновление правил верификации", .33, .041, .002),
     ("Monthly digest: what's new in Capitalist", .14, .008, .007),
 ]
+
+
+def demo_amo():
+    """Выдуманные смены этапов в amo (data/amo_demo.json) для вкладки «Welcome CardsPro → CRP»."""
+    t = json.load(open(ROOT / "data" / "touch_demo.json", encoding="utf-8"))
+    seq3 = {iid for iid, v in t["issues"].items() if v[0] == "3"}
+    fmt = "%Y-%m-%d %H:%M"
+    events = []
+    clicked = {}
+    for email, iid, ct, dest in t["click"]:
+        if iid in seq3 and dest == "site":
+            clicked.setdefault(email, ct)
+    for email, ct in clicked.items():
+        if random.random() < .45:
+            et = dt.datetime.strptime(ct, fmt) + dt.timedelta(days=random.uniform(.2, 40))
+            if et < dt.datetime.now():
+                events.append([email, et.strftime(fmt), random.choice([84381634, 84381634, 84327810, 142]), 1])
+    for email, iid, dtt in t["deliv"]:
+        if iid in seq3 and email not in clicked and random.random() < .04:
+            et = dt.datetime.strptime(dtt, fmt) + dt.timedelta(days=random.uniform(1, 20))
+            if et < dt.datetime.now():
+                events.append([email, et.strftime(fmt), 84381634, 2])
+    events.sort(key=lambda e: e[1])
+    out = ROOT / "data" / "amo_demo.json"
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump({"generated_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"), "events": events}, f)
+    print(f"Демо amo: {out} ({len(events)} смен этапа)")
 
 
 def demo_campaigns(today):

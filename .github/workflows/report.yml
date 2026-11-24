@@ -32,6 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       HAS_SENDSAY: ${{ secrets.SENDSAY_APIKEY != '' }}
+      HAS_AMO: ${{ secrets.AMO_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -76,6 +77,13 @@ jobs:
           SENDSAY_LOGIN: ${{ secrets.SENDSAY_LOGIN }}
           SENDSAY_APIKEY: ${{ secrets.SENDSAY_APIKEY }}
         run: python scripts/fetch_touches.py
+
+      - name: Этапы сделок из amoCRM для вкладки «Welcome CardsPro → CRP» (адреса в репозиторий не сохраняются)
+        if: env.HAS_AMO == 'true'
+        continue-on-error: true   # без amo остальной отчёт всё равно опубликуется
+        env:
+          AMO_TOKEN: ${{ secrets.AMO_TOKEN }}
+        run: python scripts/fetch_amo.py
 
       - name: Сборка страницы и алертов (данные шифруются паролем)
         env:
