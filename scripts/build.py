@@ -311,6 +311,101 @@ def build_conversions(cfg, rows, meta, merges, touch, password):
     return out
 
 
+def build_crm(cfg, rows, merges, touch, amo):
+    """Вкладка «Welcome CardsPro → CRP»: переход на сайт/ЛК из письма цепочки -> смена этапа сделки в amo.
+
+    Конверсия: после перехода по ссылке на сайт или ЛК (не Telegram) из любого письма цепочки
+    в течение window_days сделка человека перешла на один из целевых этапов. Засчитывается первому
+    такому событию, письмо — последнее, по которому был переход до него. В отчёт идут только агрегаты.
+    """
+    crm = cfg.get("cardspro_crm") or {}
+    seq0 = str(crm.get("scenario", "3"))
+    win = int(crm.get("window_days", 30))
+    dests = set(crm.get("click_dest", ["site"]))
+    statuses = [[str(k), v] for k, v in (crm.get("statuses") or {}).items()]
+    out = {"scenario": seq0, "window_days": win, "statuses": statuses, "has_touch": bool(touch), "has_amo": bool(amo),
+           "pipeline": (cfg.get("amo") or {}).get("pipeline_name", "")}
+    if not touch:
+        return out
+    by_name = {(r["seq"], r["name"], r["subject"]): (r["letter"], r["lang"], r["step"]) for r in rows}
+    labels = letter_labels(rows)
+    letter_of, letters = {}, {}
+    for iid, (seq, name, subj) in touch["issues"].items():
+        seq = merges.get(seq, seq)
+        if seq != seq0:
+            continue
+        hit = by_name.get((seq, name, subj)) or next((v for (s_, n, _), v in by_name.items() if s_ == seq and n == name), None) \
+            or (f"?:{name or subj}", detect_lang(subj, name), 0)
+        letter_of[iid] = hit[0]
+        letters.setdefault(hit[0], {"key": hit[0], "label": labels.get((seq, hit[0]), f"Письмо «{subj or name}»"),
+                                    "lang": hit[1], "step": hit[2], "recipients": set(), "clickers": set(), "conv": 0,
+                                    "by_status": {}})
+    first_deliv, clicks = {}, {}
+    for email, iid, t in touch["deliv"]:
+        if iid in letter_of:
+            letters[letter_of[iid]]["recipients"].add(email)
+            first_deliv[email] = min(first_deliv.get(email, t), t)
+    for email, iid, t, dest in touch["click"]:
+        if iid in letter_of and dest in dests:
+            letters[letter_of[iid]]["clickers"].add(email)
+            clicks.setdefault(email, []).append((t, letter_of[iid]))
+    for v in clicks.values():
+        v.sort()
+
+    def dt_(s):
+        return dt.datetime.strptime(s[:16], "%Y-%m-%d %H:%M")
+
+    now = dt.datetime.now(MSK).replace(tzinfo=None)
+    ev = {}
+    for email, t, sid, _lead in (amo or {}).get("events", []):
+        ev.setdefault(email, []).append((t, str(sid)))
+    for v in ev.values():
+        v.sort()
+
+    by_status = {k: 0 for k, _ in statuses}
+    lags, weeks, conv_total = [], {}, 0
+    for email, cl in clicks.items():
+        first = dt_(cl[0][0])
+        wk = (first - dt.timedelta(days=first.weekday())).date().isoformat()
+        w = weeks.setdefault(wk, {"week": wk, "clickers": 0, "conv": 0, "open": 0})
+        w["clickers"] += 1
+        if now < first + dt.timedelta(days=win):
+            w["open"] += 1  # окно 30 дней ещё не закрылось
+        for t, sid in ev.get(email, []):
+            te = dt_(t)
+            before = [c for c in cl if dt_(c[0]) < te <= dt_(c[0]) + dt.timedelta(days=win)]
+            if before:
+                c = before[-1]
+                conv_total += 1
+                letters[c[1]]["conv"] += 1
+                letters[c[1]]["by_status"][sid] = letters[c[1]]["by_status"].get(sid, 0) + 1
+                by_status[sid] = by_status.get(sid, 0) + 1
+                lags.append((te - dt_(c[0])).total_seconds() / 86400)
+                w["conv"] += 1
+                break
+    # Для сравнения: получили письма, но на сайт не переходили — сколько дошли до этапа за то же окно от первого письма.
+    nc_people = nc_conv = 0
+    for email, t0 in first_deliv.items():
+        if email in clicks:
+            continue
+        nc_people += 1
+        a = dt_(t0)
+        if any(a < dt_(t) <= a + dt.timedelta(days=win) for t, _ in ev.get(email, [])):
+            nc_conv += 1
+    lags.sort()
+    out.update({
+        "since": touch["since"], "touch_at": touch["generated_at"], "amo_at": (amo or {}).get("generated_at"),
+        "recipients": len(first_deliv), "clickers": len(clicks), "conv": conv_total,
+        "lag_median": round(lags[len(lags) // 2], 1) if lags else None,
+        "by_status": by_status, "no_click": {"people": nc_people, "conv": nc_conv},
+        "amo_matched": sum(1 for e in ev if e in first_deliv),
+        "letters": sorted([dict(v, recipients=len(v["recipients"]), clickers=len(v["clickers"])) for v in letters.values()],
+                          key=lambda x: (x["lang"], x["step"])),
+        "weeks": sorted(weeks.values(), key=lambda x: x["week"]),
+    })
+    return out
+
+
 def build_campaigns(cfg, path):
     """Массовые рассылки: по строке на выпуск + продукт и язык."""
     c = cfg.get("campaigns", {})
@@ -401,6 +496,13 @@ def main():
     camp_path = CAMPAIGNS_FILE
     if "--campaigns" in sys.argv:
         camp_path = ROOT / sys.argv[sys.argv.index("--campaigns") + 1]
+    amo_path = ROOT / "data" / "amo.json"
+    if "--amo" in sys.argv:
+        amo_path = ROOT / sys.argv[sys.argv.index("--amo") + 1]
+    amo = None
+    if amo_path.exists():
+        with open(amo_path, encoding="utf-8") as f:
+            amo = json.load(f)
     cfg = load_config()
     if data_path.exists():
         with open(data_path, encoding="utf-8") as f:
@@ -453,6 +555,7 @@ def main():
                     "rate_window_days": cfg["alerts"].get("rate_window_days", 14)},
         "rows": rows,
         "campaigns": build_campaigns(cfg, camp_path),
+        "crm": build_crm(cfg, rows, merges, touch, amo),
         "conv": build_conversions(cfg, rows, meta, merges, touch, os.environ.get("REPORT_PASSWORD", "")),
     }
     raw = json.dumps(report, ensure_ascii=False, separators=(",", ":")).encode("utf-8")

@@ -92,9 +92,18 @@ def main():
     for email, iid, rdt, seq in reads:
         if str(seq) in seqs and email and str(iid) in issues:
             o_rows.append([email.strip().lower(), str(iid), str(rdt)[:16]])
+    hosts = {}
     for email, iid, cdt, seq, url in clicks:
         if str(seq) in seqs and email and str(iid) in issues:
-            c_rows.append([email.strip().lower(), str(iid), str(cdt)[:16], dest_of(url)])
+            d = dest_of(url)
+            c_rows.append([email.strip().lower(), str(iid), str(cdt)[:16], d])
+            try:
+                h = (urlparse(url or "").hostname or "—").lower()
+            except ValueError:
+                h = "—"
+            hosts[(d, h)] = hosts.get((d, h), 0) + 1
+    # Домены ссылок (без адресов людей) — чтобы проверить, что сайт и ЛК распознаются правильно.
+    print("Клики по доменам: " + "; ".join(f"{h} → {d}: {n}" for (d, h), n in sorted(hosts.items(), key=lambda x: -x[1])[:15]))
 
     TOUCH_FILE.parent.mkdir(parents=True, exist_ok=True)
     payload = {
