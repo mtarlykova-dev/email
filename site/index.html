@@ -347,6 +347,11 @@ td.warn { color: var(--bad); }
       <div class="tbl-wrap" id="crp-letters"></div>
     </section>
     <section>
+      <h2>Сделки-конверсии</h2>
+      <p class="sub">Каждая засчитанная конверсия со ссылкой на сделку в amoCRM.</p>
+      <div class="tbl-wrap" id="crp-deals"></div>
+    </section>
+    <section>
       <h2>На какой этап перешли</h2>
       <p class="sub">Первый целевой этап, на который сделка перешла после клика.</p>
       <div class="split" id="crp-status"></div>
@@ -1043,7 +1048,7 @@ td.warn { color: var(--bad); }
 
   // ---------- Welcome CardsPro → CRP ----------
   function renderCrp() {
-    const C = R.crm || {}, ids = ["crp-kpis", "crp-letters", "crp-status", "crp-weeks"];
+    const C = R.crm || {}, ids = ["crp-kpis", "crp-letters", "crp-status", "crp-weeks", "crp-deals"];
     const pct = (a, b) => b ? fmtPct(a / b) : "—";
     const st = C.statuses || [];
     $("crp-pipe").textContent = C.pipeline || "CRP";
@@ -1073,6 +1078,14 @@ td.warn { color: var(--bad); }
 
     const mx = Math.max(1, ...st.map(x => C.by_status[x[0]] || 0));
     $("crp-status").innerHTML = st.map((x, i) => `<div class="row"><span>${esc(x[1])}</span><span class="track"><b style="width:${((C.by_status[x[0]] || 0) / mx * 100).toFixed(1)}%;background:var(${SLOTS[i]})"></b></span><span>${fmtInt(C.by_status[x[0]] || 0)}</span></div>`).join("");
+
+    const stName = Object.fromEntries(st), D = C.deals || [];
+    const dtf = x => fmtDT(x);
+    $("crp-deals").innerHTML = !D.length ? `<p class="empty">Конверсий пока нет.</p>` :
+      `<table><thead><tr><th>Сделка</th><th>Этап</th><th>Когда перешла</th><th>Письмо</th><th>Переход на сайт</th></tr></thead><tbody>` +
+      D.map(d => `<tr><td><a href="${esc(C.amo_url + d.lead)}" target="_blank" rel="noopener">#${esc(d.lead)}</a></td><td>${esc(stName[d.status] || d.status)}</td><td>${dtf(d.at)}</td><td class="camp">${esc(d.letter)}</td><td>${dtf(d.click)}</td></tr>`).join("") + `</tbody></table>`;
+    $("crp-deals").querySelectorAll("th").forEach((th, i) => { if (i < 4) th.style.textAlign = "left"; });
+    $("crp-deals").querySelectorAll("tr").forEach(tr => [...tr.children].slice(0, 4).forEach(td => td.style.textAlign = "left"));
 
     const W = (C.weeks || []).slice().reverse();
     $("crp-weeks").innerHTML = !W.length ? `<p class="empty">Переходов на сайт пока нет.</p>` :
