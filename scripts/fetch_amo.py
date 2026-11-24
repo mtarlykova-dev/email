@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Забирает из amoCRM смены этапов сделок для вкладки «Welcome CardsPro → CRP».
+"""Забирает из amoCRM смены этапов сделок для вкладок «цепочка → воронка» (config.json → crm_tabs).
 
-Берём события «этап сделки изменён» (lead_status_changed) в воронке из config.json → amo,
-на целевые этапы (1st payment, Integration process, Successfully) — и email контактов этих сделок.
+Берём события «этап сделки изменён» (lead_status_changed) в воронке каждой вкладки на её целевые
+этапы — и email контактов этих сделок.
 Сопоставление с кликами Sendsay делает build.py; в отчёт попадают только агрегаты.
 data/amo.json содержит адреса — он в .gitignore и в репозиторий не попадает.
 
@@ -69,37 +69,39 @@ def main():
     if not token:
         sys.exit("Нет AMO_TOKEN — вкладка «Welcome CardsPro → CRP» будет без данных amo.")
     cfg = load_config()
-    amo, crm = cfg["amo"], cfg["cardspro_crm"]
-    base = f"https://{amo['subdomain']}.amocrm.ru"
-    pid = int(amo["pipeline_id"])
-    targets = {int(k): v for k, v in crm["statuses"].items()}
+    base = f"https://{cfg['amo']['subdomain']}.amocrm.ru"
+    tabs = {k: v for k, v in cfg.get("crm_tabs", {}).items() if not k.startswith("_")}
     days = int(cfg.get("conversions", {}).get("days", 90)) + 2
     since = dt.datetime.now(MSK) - dt.timedelta(days=days)
 
-    # Проверяем, что этапы с такими ID есть в воронке и называются так же.
-    pipe = get(base, token, f"/api/v4/leads/pipelines/{pid}", debug=debug)
-    real = {s["id"]: s["name"] for s in pipe.get("_embedded", {}).get("statuses", [])}
-    for sid, name in targets.items():
-        if sid not in real:
-            print(f"::warning::В воронке {pid} нет этапа {sid} ({name}) — проверьте config.json → cardspro_crm.statuses")
-        elif real[sid].strip().lower() != name.strip().lower():
-            print(f"Этап {sid}: в config «{name}», в amo «{real[sid]}»")
-
-    events, page = [], 1
-    params = {"filter[type]": "lead_status_changed", "filter[created_at][from]": int(since.timestamp()), "limit": 100}
-    for i, sid in enumerate(targets):
-        params[f"filter[value_after][leads_statuses][{i}][pipeline_id]"] = pid
-        params[f"filter[value_after][leads_statuses][{i}][status_id]"] = sid
-    while True:
-        data = get(base, token, "/api/v4/events", dict(params, page=page), debug)
-        batch = data.get("_embedded", {}).get("events", [])
-        for e in batch:
-            after = (e.get("value_after") or [{}])[0].get("lead_status") or {}
-            if int(after.get("pipeline_id") or 0) == pid and int(after.get("id") or 0) in targets:
-                events.append((int(e["entity_id"]), int(e["created_at"]), int(after["id"])))
-        if not batch or not data.get("_links", {}).get("next"):
-            break
-        page += 1
+    events = []
+    for key, tab in tabs.items():
+        pid = int(tab["pipeline_id"])
+        targets = {int(k): v for k, v in tab["statuses"].items()}
+        # Проверяем, что этапы с такими ID есть в воронке и называются так же.
+        pipe = get(base, token, f"/api/v4/leads/pipelines/{pid}", debug=debug)
+        real = {st["id"]: st["name"] for st in pipe.get("_embedded", {}).get("statuses", [])}
+        for sid, name in targets.items():
+            if sid not in real:
+                print(f"::warning::В воронке {pid} нет этапа {sid} ({name}) — проверьте config.json → crm_tabs.{key}.statuses")
+            elif real[sid].strip().lower() != name.strip().lower():
+                print(f"Воронка {pid}, этап {sid}: в config «{name}», в amo «{real[sid]}»")
+        params = {"filter[type]": "lead_status_changed", "filter[created_at][from]": int(since.timestamp()), "limit": 100}
+        for i, sid in enumerate(targets):
+            params[f"filter[value_after][leads_statuses][{i}][pipeline_id]"] = pid
+            params[f"filter[value_after][leads_statuses][{i}][status_id]"] = sid
+        page, n0 = 1, len(events)
+        while True:
+            data = get(base, token, "/api/v4/events", dict(params, page=page), debug)
+            batch = data.get("_embedded", {}).get("events", [])
+            for e in batch:
+                after = (e.get("value_after") or [{}])[0].get("lead_status") or {}
+                if int(after.get("pipeline_id") or 0) == pid and int(after.get("id") or 0) in targets:
+                    events.append((int(e["entity_id"]), int(e["created_at"]), int(after["id"]), pid))
+            if not batch or not data.get("_links", {}).get("next"):
+                break
+            page += 1
+        print(f"amo, воронка {tab.get('pipeline_name', pid)}: смен этапа на целевые с {since.date()}: {len(events) - n0}")
 
     lead_ids = sorted({e[0] for e in events})
     lead_contacts = {}
@@ -119,20 +121,18 @@ def main():
             emails[c["id"]] = [v for v in vals if "@" in v]
 
     out, no_email = [], 0
-    for lead, ts, sid in sorted(events, key=lambda x: x[1]):
+    for lead, ts, sid, pid in sorted(events, key=lambda x: x[1]):
         addrs = sorted({a for c in lead_contacts.get(lead, []) for a in emails.get(c, [])})
         if not addrs:
             no_email += 1
         t = dt.datetime.fromtimestamp(ts, MSK).strftime("%Y-%m-%d %H:%M")
         for a in addrs:
-            out.append([a, t, sid, lead])
+            out.append([a, t, sid, lead, pid])
     AMO_FILE.parent.mkdir(parents=True, exist_ok=True)
     with open(AMO_FILE, "w", encoding="utf-8") as f:
         json.dump({"generated_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
-                   "since": since.date().isoformat(), "pipeline_id": pid, "statuses": {str(k): v for k, v in targets.items()},
-                   "events": out}, f, ensure_ascii=False, separators=(",", ":"))
-    print(f"amo: смен этапа на целевые с {since.date()}: {len(events)} (сделок {len(lead_ids)}, "
-          f"без email у контакта: {no_email})")
+                   "since": since.date().isoformat(), "events": out}, f, ensure_ascii=False, separators=(",", ":"))
+    print(f"amo всего: смен этапа {len(events)}, сделок {len(lead_ids)}, без email у контакта: {no_email}")
 
 
 if __name__ == "__main__":

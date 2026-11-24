@@ -261,6 +261,7 @@ td.warn { color: var(--bad); }
     <button type="button" role="tab" id="tab-btn-trig" aria-controls="tab-trig" data-tab="trig">Триггерные цепочки</button>
     <button type="button" role="tab" id="tab-btn-mass" aria-controls="tab-mass" data-tab="mass">Массовые рассылки</button>
     <button type="button" role="tab" id="tab-btn-crp" aria-controls="tab-crp" data-tab="crp">Welcome CardsPro → CRP</button>
+    <button type="button" role="tab" id="tab-btn-cap" aria-controls="tab-crp" data-tab="cap">Welcome Capitalist → CAP</button>
   </nav>
 
   <div class="filters" id="filters" role="group" aria-label="Фильтры">
@@ -336,7 +337,7 @@ td.warn { color: var(--bad); }
 
   <div id="tab-crp" role="tabpanel" aria-labelledby="tab-btn-crp" hidden>
     <section style="margin-top:28px">
-      <h2>Welcome CardsPro → сделка в воронке <span id="crp-pipe">CRP</span></h2>
+      <h2><span id="crp-chain">Welcome CardsPro</span> → сделка в воронке <span id="crp-pipe">CRP</span></h2>
       <p class="sub" id="crp-rule"></p>
       <div class="kpis" id="crp-kpis"></div>
       <p class="mnote" id="crp-note"></p>
@@ -397,7 +398,7 @@ td.warn { color: var(--bad); }
     <p>Открытия и клики за последние 2–3 дня ещё набираются, поэтому последняя неделя обычно ниже реальных значений.</p>
     <p><button class="logout" id="logout" type="button" hidden>Выйти и забыть пароль на этом устройстве</button></p>
     <p>Массовые рассылки — выпуски Sendsay, отправленные не из сценария. Их открытия и клики пересчитываются за всё время при каждом обновлении. Рассылки из других сервисов (например, amo) внесены вручную и помечены в таблице.</p>
-    <p>Вкладка «Welcome CardsPro → CRP» сопоставляет клики из Sendsay со сменой этапов сделок в amoCRM по email. Адреса используются только при сборке и в отчёт не попадают — в нём только итоговые числа.</p>
+    <p>Вкладки «Welcome CardsPro → CRP» и «Welcome Capitalist → CAP» сопоставляют клики из Sendsay со сменой этапов сделок в amoCRM по email. Адреса используются только при сборке и в отчёт не попадают — в нём только итоговые числа.</p>
     <p>Данные обновляются автоматически из Sendsay через GitHub Actions. Только агрегаты по письмам, без адресов.</p>
   </div>
 </div>
@@ -415,7 +416,7 @@ td.warn { color: var(--bad); }
     unsub:{ label: "Отписки", fmt: v => fmtPct(v, 2) },
   };
   const state = { product: "all", lang: "all", period: "30", scenario: "all", metric: "ctr",
-                  tab: ({ "#mass": "mass", "#crp": "crp" })[location.hash] || "trig", mmetric: "ctr", msort: ["d", -1] };
+                  tab: ({ "#mass": "mass", "#crp": "crp", "#cap": "cap" })[location.hash] || "trig", mmetric: "ctr", msort: ["d", -1] };
   let R = null, colorOf = {};
 
   const nf = new Intl.NumberFormat("ru-RU");
@@ -1046,20 +1047,22 @@ td.warn { color: var(--bad); }
       (B ? `<p class="sub" style="margin-top:8px">Ориентир: <a href="${esc(R.benchmarks.source_url)}" target="_blank" rel="noopener">${esc(R.benchmarks.source)}</a>.</p>` : "");
   }
 
-  // ---------- Welcome CardsPro → CRP ----------
+  // ---------- Цепочка → воронка amo (вкладки из config.json → crm_tabs) ----------
+  const CRM_TABS = ["crp", "cap"];
   function renderCrp() {
-    const C = R.crm || {}, ids = ["crp-kpis", "crp-letters", "crp-status", "crp-weeks", "crp-deals"];
+    const C = (R.crm || {})[state.tab] || {}, ids = ["crp-kpis", "crp-letters", "crp-status", "crp-weeks", "crp-deals"];
     const pct = (a, b) => b ? fmtPct(a / b) : "—";
     const st = C.statuses || [];
-    $("crp-pipe").textContent = C.pipeline || "CRP";
-    $("crp-rule").textContent = `Конверсия: человек из цепочки Welcome CardsPro перешёл из любого письма по ссылке на сайт или в личный кабинет (клики в Telegram не считаются), и в течение ${C.window_days || 30} дней после этого его сделка в amoCRM перешла на этап ${st.map(x => "«" + x[1] + "»").join(", ").replace(/, ([^,]*)$/, " или $1")}. Люди сопоставляются по email контакта сделки. Каждый человек считается один раз.`;
+    $("crp-pipe").textContent = C.pipeline || "";
+    $("crp-chain").textContent = (C.title || "").split(" → ")[0] || C.scenario_name || "";
+    $("crp-rule").textContent = `Конверсия: человек из цепочки ${esc($("crp-chain").textContent)} перешёл из любого письма по ссылке на сайт или в личный кабинет (клики в Telegram не считаются), и в течение ${C.window_days || 30} дней после этого его сделка в amoCRM перешла на этап ${st.map(x => "«" + x[1] + "»").join(", ").replace(/, ([^,]*)$/, " или $1")}. Люди сопоставляются по email контакта сделки. Каждый человек считается один раз.`;
     const empty = msg => { ids.forEach(id => $(id).innerHTML = ""); $("crp-note").textContent = ""; $("crp-kpis").innerHTML = `<p class="empty" style="grid-column:1/-1">${msg}</p>`; };
     if (!C.has_touch) return empty("Нет данных о кликах по людям из Sendsay — они появятся после следующего обновления отчёта.");
     if (!C.has_amo) return empty("Данных из amoCRM пока нет. Нужен секрет AMO_TOKEN в настройках репозитория (Settings → Secrets and variables → Actions), затем перезапустите «Обновить отчёт». Ниже — переходы на сайт по письмам.");
     const items = [
       ["Получили письма", fmtInt(C.recipients), `с ${fmtDate(C.since)}`],
       ["Перешли на сайт / ЛК", fmtInt(C.clickers), `${pct(C.clickers, C.recipients)} от получивших`],
-      ["Конверсия в CRP", fmtInt(C.conv), `${pct(C.conv, C.clickers)} от перешедших`],
+      [`Конверсия в ${esc(C.pipeline || "воронку")}`, fmtInt(C.conv), `${pct(C.conv, C.clickers)} от перешедших`],
       ["Без перехода на сайт", pct(C.no_click.conv, C.no_click.people), `${fmtInt(C.no_click.conv)} из ${fmtInt(C.no_click.people)} дошли до этапа сами`],
       ["Медиана: клик → этап", C.lag_median == null ? "—" : String(C.lag_median).replace(".", ",") + " дн.", "от перехода до смены этапа"],
     ];
@@ -1097,8 +1100,8 @@ td.warn { color: var(--bad); }
   function setTab(t) {
     state.tab = t;
     document.querySelectorAll(".tabs [role=tab]").forEach(b => { b.setAttribute("aria-selected", b.dataset.tab === t); b.tabIndex = b.dataset.tab === t ? 0 : -1; });
-    $("tab-trig").hidden = t !== "trig"; $("tab-mass").hidden = t !== "mass"; $("tab-crp").hidden = t !== "crp";
-    $("fg-sc").hidden = t !== "trig"; $("filters").hidden = t === "crp";
+    $("tab-trig").hidden = t !== "trig"; $("tab-mass").hidden = t !== "mass"; $("tab-crp").hidden = !CRM_TABS.includes(t);
+    $("fg-sc").hidden = t !== "trig"; $("filters").hidden = CRM_TABS.includes(t);
     try { history.replaceState(null, "", t === "trig" ? location.pathname + location.search : "#" + t); } catch (_) {}
     render();
   }
@@ -1107,14 +1110,14 @@ td.warn { color: var(--bad); }
     tl.onclick = e => { const b = e.target.closest("[role=tab]"); if (b) setTab(b.dataset.tab); };
     tl.onkeydown = e => {
       if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-      const order = ["trig", "mass", "crp"], i = order.indexOf(state.tab);
+      const order = ["trig", "mass", ...CRM_TABS], i = order.indexOf(state.tab);
       const t = order[(i + (e.key === "ArrowRight" ? 1 : order.length - 1)) % order.length]; setTab(t); $("tab-btn-" + t).focus();
     };
   }
 
   function render() {
     if (state.tab === "mass") return renderMass();
-    if (state.tab === "crp") return renderCrp();
+    if (CRM_TABS.includes(state.tab)) return renderCrp();
     renderAlerts(); renderKpis(); renderChains(); renderConvGoals(); renderConvResult(); renderTrend(); renderMatrix();
   }
 

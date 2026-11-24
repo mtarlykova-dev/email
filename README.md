@@ -168,7 +168,7 @@ python -m http.server -d _site 8000
 
 Локальная проверка: `python scripts/demo_data.py && python scripts/build.py --data data/demo.json --touch data/touch_demo.json --campaigns data/campaigns_demo.json`.
 
-## Welcome CardsPro → воронка CRP (amoCRM)
+## Цепочка → воронка amoCRM (вкладки CRP и CAP)
 
 Вкладка `…/email/#crp`. Конверсия: человек из цепочки Welcome CardsPro (сценарий 3) перешёл по ссылке из любого письма **на сайт или в ЛК** (домены Capitalist/CardsPro; Telegram и соцсети не считаются), и в течение 30 дней после этого его сделка в воронке CRP перешла на этап **1st payment**, **Integration process** или **Successfully**. Каждый человек считается один раз — по первой такой смене этапа; конверсия засчитывается письму, из которого был последний переход до неё. Для сравнения показано, сколько получателей без перехода на сайт дошли до этих этапов за 30 дней от первого письма.
 
@@ -179,3 +179,10 @@ python -m http.server -d _site 8000
 Оба файла (`data/touch.json`, `data/amo.json`) содержат адреса, поэтому в репозиторий не попадают; в отчёт идут только агрегаты.
 
 Нужен секрет **`AMO_TOKEN`** — долгосрочный токен закрытой интеграции amoCRM (amo → amoМаркет → ⋯ → Создать интеграцию → закрытая, права на чтение сделок и контактов → вкладка «Ключи и доступы» → «Сгенерировать токен»). Настройки — блоки `amo` и `cardspro_crm` в `config.json`: окно (`window_days`), этапы (ID → название), какие клики считать (`click_dest`).
+
+Вкладок две, обе настраиваются в `config.json → crm_tabs` (ключ — адрес вкладки):
+
+- `crp` — Welcome CardsPro (сценарий 3) → воронка CRP: 1st payment, Integration process, Successfully;
+- `cap` — Welcome Capitalist (сценарий 5, вместе со старой EN-цепочкой 4) → воронка CAP: Verification, Integration process, 1st payment, Successfully.
+
+Правило одно для обеих: переход из любого письма на сайт или ЛК, затем в течение 30 дней сделка переходит на любой из этапов. Новая вкладка такого вида — новый блок в `crm_tabs` и кнопка в `site/index.html` (массив `CRM_TABS`).

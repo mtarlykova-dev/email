@@ -205,22 +205,41 @@
     ]
   },
   "amo": {
-    "_help": "amoCRM: поддомен аккаунта и воронка, из которой берём смены этапов. Токен — секрет AMO_TOKEN.",
-    "subdomain": "projectone",
-    "pipeline_id": 10521326,
-    "pipeline_name": "CRP"
+    "_help": "amoCRM: поддомен аккаунта. Токен — секрет AMO_TOKEN.",
+    "subdomain": "projectone"
   },
-  "cardspro_crm": {
-    "_help": "Вкладка «Welcome CardsPro → CRP». Конверсия: человек из цепочки scenario перешёл по ссылке из любого письма на сайт или ЛК (click_dest: site — домены Capitalist/CardsPro; Telegram не считается), и в течение window_days дней после этого его сделка в воронке amo перешла на один из этапов statuses (ID этапа -> название). Сопоставление — по email контакта сделки.",
-    "scenario": "3",
-    "click_dest": [
-      "site"
-    ],
-    "window_days": 30,
-    "statuses": {
-      "84381634": "1st payment",
-      "84327810": "Integration process",
-      "142": "Successfully"
+  "crm_tabs": {
+    "_help": "Вкладки «цепочка → воронка amo». Ключ — адрес вкладки (#crp). Конверсия: человек из цепочки scenario перешёл по ссылке из любого письма на сайт или ЛК (click_dest: site — домены Capitalist/CardsPro; Telegram и соцсети не считаются), и в течение window_days дней после этого его сделка в воронке pipeline_id перешла на один из этапов statuses (ID этапа -> название). Сопоставление — по email контакта сделки.",
+    "crp": {
+      "title": "Welcome CardsPro → CRP",
+      "scenario": "3",
+      "pipeline_id": 10521326,
+      "pipeline_name": "CRP",
+      "window_days": 30,
+      "click_dest": [
+        "site"
+      ],
+      "statuses": {
+        "84381634": "1st payment",
+        "84327810": "Integration process",
+        "142": "Successfully"
+      }
+    },
+    "cap": {
+      "title": "Welcome Capitalist → CAP",
+      "scenario": "5",
+      "pipeline_id": 10598590,
+      "pipeline_name": "CAP",
+      "window_days": 30,
+      "click_dest": [
+        "site"
+      ],
+      "statuses": {
+        "83822814": "Verification",
+        "83822818": "Integration process",
+        "83574378": "1st payment",
+        "142": "Successfully"
+      }
     }
   }
 }
