@@ -311,20 +311,25 @@ def build_conversions(cfg, rows, meta, merges, touch, password):
     return out
 
 
-def build_crm(cfg, rows, merges, touch, amo):
-    """Вкладка «Welcome CardsPro → CRP»: переход на сайт/ЛК из письма цепочки -> смена этапа сделки в amo.
+def build_crm_tabs(cfg, rows, merges, touch, amo):
+    tabs = {k: v for k, v in (cfg.get("crm_tabs") or {}).items() if not k.startswith("_")}
+    return {k: dict(build_crm(cfg, t, rows, merges, touch, amo), title=t.get("title", k)) for k, t in tabs.items()}
+
+
+def build_crm(cfg, crm, rows, merges, touch, amo):
+    """Вкладка «цепочка → воронка amo»: переход на сайт/ЛК из письма цепочки -> смена этапа сделки.
 
     Конверсия: после перехода по ссылке на сайт или ЛК (не Telegram) из любого письма цепочки
     в течение window_days сделка человека перешла на один из целевых этапов. Засчитывается первому
     такому событию, письмо — последнее, по которому был переход до него. В отчёт идут только агрегаты.
     """
-    crm = cfg.get("cardspro_crm") or {}
+    pid = int(crm.get("pipeline_id") or 0)
     seq0 = str(crm.get("scenario", "3"))
     win = int(crm.get("window_days", 30))
     dests = set(crm.get("click_dest", ["site"]))
     statuses = [[str(k), v] for k, v in (crm.get("statuses") or {}).items()]
     out = {"scenario": seq0, "window_days": win, "statuses": statuses, "has_touch": bool(touch), "has_amo": bool(amo),
-           "pipeline": (cfg.get("amo") or {}).get("pipeline_name", "")}
+           "pipeline": crm.get("pipeline_name", ""), "scenario_name": ((cfg.get("scenarios") or {}).get(seq0) or {}).get("name", "")}
     if not touch:
         return out
     by_name = {(r["seq"], r["name"], r["subject"]): (r["letter"], r["lang"], r["step"]) for r in rows}
@@ -357,7 +362,10 @@ def build_crm(cfg, rows, merges, touch, amo):
 
     now = dt.datetime.now(MSK).replace(tzinfo=None)
     ev = {}
-    for email, t, sid, lead in (amo or {}).get("events", []):
+    for e in (amo or {}).get("events", []):
+        email, t, sid, lead = e[:4]
+        if len(e) > 4 and int(e[4]) != pid:
+            continue  # событие из другой воронки
         ev.setdefault(email, []).append((t, str(sid), lead))
     for v in ev.values():
         v.sort()
@@ -559,7 +567,7 @@ def main():
                     "rate_window_days": cfg["alerts"].get("rate_window_days", 14)},
         "rows": rows,
         "campaigns": build_campaigns(cfg, camp_path),
-        "crm": build_crm(cfg, rows, merges, touch, amo),
+        "crm": build_crm_tabs(cfg, rows, merges, touch, amo),
         "conv": build_conversions(cfg, rows, meta, merges, touch, os.environ.get("REPORT_PASSWORD", "")),
     }
     raw = json.dumps(report, ensure_ascii=False, separators=(",", ":")).encode("utf-8")

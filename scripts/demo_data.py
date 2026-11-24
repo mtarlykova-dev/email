@@ -86,10 +86,21 @@ CAMPAIGN_SUBJECTS = [
 ]
 
 
-def demo_amo():
+def demo_amo():  # noqa: C901
     """Выдуманные смены этапов в amo (data/amo_demo.json) для вкладки «Welcome CardsPro → CRP»."""
     t = json.load(open(ROOT / "data" / "touch_demo.json", encoding="utf-8"))
-    seq3 = {iid for iid, v in t["issues"].items() if v[0] == "3"}
+    events = []
+    for seq, pid, sts in (("3", 10521326, [84381634, 84381634, 84327810, 142]), ("5", 10598590, [83822814, 83822814, 83574378, 142])):
+        events += demo_amo_seq(t, seq, pid, sts)
+    events.sort(key=lambda e: e[1])
+    out = ROOT / "data" / "amo_demo.json"
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump({"generated_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"), "events": events}, f)
+    print(f"Демо amo: {out} ({len(events)} смен этапа)")
+
+
+def demo_amo_seq(t, seq, pid, sts):
+    seq3 = {iid for iid, v in t["issues"].items() if v[0] == seq}
     fmt = "%Y-%m-%d %H:%M"
     events = []
     clicked = {}
@@ -100,17 +111,13 @@ def demo_amo():
         if random.random() < .45:
             et = dt.datetime.strptime(ct, fmt) + dt.timedelta(days=random.uniform(.2, 40))
             if et < dt.datetime.now():
-                events.append([email, et.strftime(fmt), random.choice([84381634, 84381634, 84327810, 142]), 1])
+                events.append([email, et.strftime(fmt), random.choice(sts), random.randint(30000000, 39999999), pid])
     for email, iid, dtt in t["deliv"]:
         if iid in seq3 and email not in clicked and random.random() < .04:
             et = dt.datetime.strptime(dtt, fmt) + dt.timedelta(days=random.uniform(1, 20))
             if et < dt.datetime.now():
-                events.append([email, et.strftime(fmt), 84381634, 2])
-    events.sort(key=lambda e: e[1])
-    out = ROOT / "data" / "amo_demo.json"
-    with open(out, "w", encoding="utf-8") as f:
-        json.dump({"generated_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"), "events": events}, f)
-    print(f"Демо amo: {out} ({len(events)} смен этапа)")
+                events.append([email, et.strftime(fmt), sts[0], random.randint(30000000, 39999999), pid])
+    return events
 
 
 def demo_campaigns(today):
